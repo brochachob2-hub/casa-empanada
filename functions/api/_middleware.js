@@ -1,5 +1,5 @@
 // Cloudflare Pages Functions — intercepts ALL /api/* requests
-// KV namespace must be bound as "KV" in Cloudflare dashboard
+// KV namespace binding: name CASA_KV, namespace CASA_KV
 
 var DEFAULT_DATA = {
   dishes: [
@@ -98,10 +98,10 @@ export async function onRequest(context) {
 
   try {
     switch (resource) {
-      case 'dishes': return await handleDishes(env.KV, method, id, request);
-      case 'orders': return await handleOrders(env.KV, method, id, request);
-      case 'inventory': return await handleCRUD(env.KV, 'inventory', method, id, request);
-      case 'expenses': return await handleExpenses(env.KV, method, request);
+      case 'dishes': return await handleDishes(env.CASA_KV, method, id, request);
+      case 'orders': return await handleOrders(env.CASA_KV, method, id, request);
+      case 'inventory': return await handleCRUD(env.CASA_KV, 'inventory', method, id, request);
+      case 'expenses': return await handleExpenses(env.CASA_KV, method, request);
       default: return err('Not found', 404);
     }
   } catch (e) {
