@@ -302,12 +302,11 @@ function closeOrderModal() { document.getElementById('orderModal').classList.rem
         addr = formatAddress(d);
       }
 
-      const order = DB.placeOrder(items, type, name, phone, addr);
-      API.post('/orders', {
+      const order = DB.sync.addOrder({
         items: items.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price, emoji: i.emoji })),
         total: items.reduce((s, i) => s + i.qty * i.price, 0),
         serviceType: type, customerName: name, customerPhone: phone, address: addr,
-      }).catch(() => {});
+      });
 
       DB.cart = [];
       document.getElementById('confirmOrderId').textContent = order.id;

@@ -205,19 +205,14 @@
       const data = { name, price, description: desc, category, emoji, image };
 
       if (editId) {
-        const dishes = DB._get('dishes');
-        DB._set('dishes', dishes.map(d => d.id === parseInt(editId) ? { ...d, ...data, image: image || undefined } : d));
+        DB.sync.updateDish(parseInt(editId), { ...data, image: image || undefined });
         cancelEdit();
         DB.toast('Dish updated');
-        API.put('/dishes/' + parseInt(editId), data).catch(() => {});
       } else {
-        const dishes = DB._get('dishes') || [];
-        const newDish = { id: DB._nextLocalId('dishes'), ...data, available: true };
-        DB._set('dishes', [...dishes, newDish]);
+        DB.sync.addDish({ ...data, available: true });
         document.getElementById('dishForm').reset();
         clearImage();
         DB.toast('Dish added');
-        API.post('/dishes', data).catch(() => {});
       }
       renderDishList();
     }
@@ -253,14 +248,11 @@
     }
 
     function toggleAvailability(id) {
-      const dishes = DB._get('dishes');
-      const d = dishes.find(dd => dd.id === id);
+      const d = DB.dishes.find(dd => dd.id === id);
       if (!d) return;
-      const newVal = !d.available;
-      DB._set('dishes', dishes.map(dd => dd.id === id ? { ...dd, available: newVal } : dd));
+      DB.sync.updateDish(id, { available: !d.available });
       renderDishList();
-      DB.toast(newVal ? 'Dish is now visible on menu' : 'Dish hidden from menu');
-      API.put('/dishes/' + id, { available: newVal }).catch(() => {});
+      DB.toast(!d.available ? 'Dish is now visible on menu' : 'Dish hidden from menu');
     }
 
     function promptDelete(id) {
@@ -277,13 +269,11 @@
 
     document.getElementById('confirmDelete').addEventListener('click', () => {
       if (deleteTarget === null) return;
-      const id = deleteTarget;
-      DB._set('dishes', DB._get('dishes').filter(d => d.id !== deleteTarget));
+      DB.sync.deleteDish(deleteTarget);
       deleteTarget = null;
       closeDeleteModal();
       renderDishList();
       DB.toast('Dish removed');
-      API.del('/dishes/' + id).catch(() => {});
     });
 
     document.getElementById('deleteModal').addEventListener('click', e => {

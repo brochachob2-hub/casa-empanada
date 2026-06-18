@@ -175,16 +175,11 @@
       const data = { name, qty, unit, cost };
 
       if (editId) {
-        const inv = DB._get('inventory') || [];
-        DB._set('inventory', inv.map(i => i.id === parseInt(editId) ? { ...i, ...data } : i));
+        DB.sync.updateInventoryItem(parseInt(editId), data);
         DB.toast('Item updated');
-        API.put('/inventory/' + parseInt(editId), data).catch(() => {});
       } else {
-        const inv = DB._get('inventory') || [];
-        const newItem = { id: DB._nextLocalId('inventory'), ...data };
-        DB._set('inventory', [...inv, newItem]);
+        DB.sync.addInventoryItem(data);
         DB.toast('Item added');
-        API.post('/inventory', data).catch(() => {});
       }
       closeInvModal();
       renderInventory();
@@ -218,13 +213,11 @@
 
     document.getElementById('confirmDeleteInv').addEventListener('click', () => {
       if (deleteInvTarget === null) return;
-      const id = deleteInvTarget;
-      DB._set('inventory', (DB._get('inventory') || []).filter(i => i.id !== deleteInvTarget));
+      DB.sync.deleteInventoryItem(deleteInvTarget);
       deleteInvTarget = null;
       closeDeleteInvModal();
       renderInventory();
       DB.toast('Item removed');
-      API.del('/inventory/' + id).catch(() => {});
     });
 
     document.getElementById('invModal').addEventListener('click', e => {

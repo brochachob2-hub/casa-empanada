@@ -160,11 +160,9 @@
       document.querySelectorAll('#overheadFields input').forEach(inp => {
         overhead[inp.dataset.key] = parseFloat(inp.value) || 0;
       });
-      const expenses = DB._get('expenses') || {};
-      DB._set('expenses', { ...expenses, overhead });
+      DB.sync.updateExpenses({ overhead });
       DB.toast('Overhead saved');
       calculateCost();
-      API.put('/expenses', { overhead }).catch(() => {});
     }
 
     function calculateCost() {

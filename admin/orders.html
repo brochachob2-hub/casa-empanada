@@ -139,11 +139,9 @@
     }
 
     function updateStatus(id, newStatus) {
-      const orders = DB._get('orders') || [];
-      DB._set('orders', orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
+      DB.sync.updateOrder(id, { status: newStatus });
       renderOrders();
       DB.toast('Order #' + id + ' updated to ' + STATUS_MAP[newStatus].label);
-      API.put('/orders/' + id, { status: newStatus }).catch(() => {});
     }
 
     function cancelOrder(id) {

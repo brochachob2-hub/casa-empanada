@@ -143,123 +143,64 @@ const DB = {
     };
       },
       sync: {
-    _online: false,
-
-    async init() {
-      try {
-        const [dishes, inventory, orders, expenses] = await Promise.all([
-          API.get('/dishes'),
-          API.get('/inventory'),
-          API.get('/orders'),
-          API.get('/expenses'),
-        ]);
-        this._online = true;
-        DB._set('dishes', dishes);
-        DB._set('inventory', inventory);
-        DB._set('orders', orders);
-        DB._set('expenses', expenses);
-      } catch (e) {
-        this._online = false;
-      }
+    init() {
+      Promise.all([
+        API.get('/dishes').then(d => d && DB._set('dishes', d)).catch(() => {}),
+        API.get('/inventory').then(i => i && DB._set('inventory', i)).catch(() => {}),
+        API.get('/orders').then(o => o && DB._set('orders', o)).catch(() => {}),
+        API.get('/expenses').then(e => e && DB._set('expenses', e)).catch(() => {}),
+      ]);
     },
-
-    isOnline() { return this._online; },
 
     // ── Dishes ──
-    async addDish(data) {
-      data.available = data.available !== undefined ? data.available : true;
-      if (!this._online) { const d = { id: DB._nextLocalId('dishes'), ...data }; DB._set('dishes', [...DB._get('dishes'), d]); return d; }
-      try {
-        const dish = await API.post('/dishes', data);
-        DB._set('dishes', [...DB._get('dishes'), dish]);
-        return dish;
-      } catch { this._online = false; return this.addDish(data); }
+    addDish(data) {
+      const d = { id: DB._nextLocalId('dishes'), ...data, available: true };
+      DB._set('dishes', [...(DB._get('dishes') || []), d]);
+      API.post('/dishes', data).catch(() => {});
+      return d;
     },
-
-    async updateDish(id, data) {
-      if (!this._online) { const dishes = DB._get('dishes'); DB._set('dishes', dishes.map(d => d.id === id ? { ...d, ...data } : d)); return DB._get('dishes').find(d => d.id === id); }
-      try {
-        const dish = await API.put('/dishes/' + id, data);
-        DB._set('dishes', DB._get('dishes').map(d => d.id === id ? dish : d));
-        return dish;
-      } catch { this._online = false; return this.updateDish(id, data); }
+    updateDish(id, data) {
+      DB._set('dishes', (DB._get('dishes') || []).map(i => i.id === id ? { ...i, ...data } : i));
+      API.put('/dishes/' + id, data).catch(() => {});
     },
-
-    async deleteDish(id) {
-      if (!this._online) { DB._set('dishes', DB._get('dishes').filter(d => d.id !== id)); return; }
-      try {
-        await API.del('/dishes/' + id);
-        DB._set('dishes', DB._get('dishes').filter(d => d.id !== id));
-      } catch { this._online = false; await this.deleteDish(id); }
-    },
-
-    async toggleDish(id) {
-      const dish = (DB._get('dishes') || []).find(d => d.id === id);
-      if (!dish) return;
-      return this.updateDish(id, { available: !dish.available });
+    deleteDish(id) {
+      DB._set('dishes', (DB._get('dishes') || []).filter(i => i.id !== id));
+      API.del('/dishes/' + id).catch(() => {});
     },
 
     // ── Orders ──
-    async addOrder(data) {
-      if (!this._online) {
-        const orders = DB._get('orders') || [];
-        const order = { id: orders.length ? Math.max(...orders.map(o => o.id)) + 1 : 1, ...data, status: 'pending', timestamp: new Date().toISOString() };
-        DB._set('orders', [...orders, order]);
-        DB._set('cart', []);
-        return order;
-      }
-      try {
-        const order = await API.post('/orders', data);
-        DB._set('orders', [...(DB._get('orders') || []), order]);
-        DB._set('cart', []);
-        return order;
-      } catch { this._online = false; return this.addOrder(data); }
+    addOrder(data) {
+      const orders = DB._get('orders') || [];
+      const order = { id: orders.length ? Math.max(...orders.map(o => o.id)) + 1 : 1, ...data, status: 'pending', timestamp: new Date().toISOString() };
+      DB._set('orders', [...orders, order]);
+      API.post('/orders', data).catch(() => {});
+      return order;
     },
-
-    async updateOrder(id, data) {
-      if (!this._online) { const orders = DB._get('orders') || []; DB._set('orders', orders.map(o => o.id === id ? { ...o, ...data } : o)); return DB._get('orders').find(o => o.id === id); }
-      try {
-        const order = await API.put('/orders/' + id, data);
-        DB._set('orders', (DB._get('orders') || []).map(o => o.id === id ? order : o));
-        return order;
-      } catch { this._online = false; return this.updateOrder(id, data); }
+    updateOrder(id, data) {
+      DB._set('orders', (DB._get('orders') || []).map(o => o.id === id ? { ...o, ...data } : o));
+      API.put('/orders/' + id, data).catch(() => {});
     },
 
     // ── Inventory ──
-    async addInventoryItem(data) {
-      if (!this._online) { const i = { id: DB._nextLocalId('inventory'), ...data }; DB._set('inventory', [...(DB._get('inventory') || []), i]); return i; }
-      try {
-        const item = await API.post('/inventory', data);
-        DB._set('inventory', [...(DB._get('inventory') || []), item]);
-        return item;
-      } catch { this._online = false; return this.addInventoryItem(data); }
+    addInventoryItem(data) {
+      const item = { id: DB._nextLocalId('inventory'), ...data };
+      DB._set('inventory', [...(DB._get('inventory') || []), item]);
+      API.post('/inventory', data).catch(() => {});
+      return item;
     },
-
-    async updateInventoryItem(id, data) {
-      if (!this._online) { const inv = DB._get('inventory') || []; DB._set('inventory', inv.map(i => i.id === id ? { ...i, ...data } : i)); return DB._get('inventory').find(i => i.id === id); }
-      try {
-        const item = await API.put('/inventory/' + id, data);
-        DB._set('inventory', (DB._get('inventory') || []).map(i => i.id === id ? item : i));
-        return item;
-      } catch { this._online = false; return this.updateInventoryItem(id, data); }
+    updateInventoryItem(id, data) {
+      DB._set('inventory', (DB._get('inventory') || []).map(i => i.id === id ? { ...i, ...data } : i));
+      API.put('/inventory/' + id, data).catch(() => {});
     },
-
-    async deleteInventoryItem(id) {
-      if (!this._online) { DB._set('inventory', (DB._get('inventory') || []).filter(i => i.id !== id)); return; }
-      try {
-        await API.del('/inventory/' + id);
-        DB._set('inventory', (DB._get('inventory') || []).filter(i => i.id !== id));
-      } catch { this._online = false; await this.deleteInventoryItem(id); }
+    deleteInventoryItem(id) {
+      DB._set('inventory', (DB._get('inventory') || []).filter(i => i.id !== id));
+      API.del('/inventory/' + id).catch(() => {});
     },
 
     // ── Expenses ──
-    async updateExpenses(data) {
-      if (!this._online) { const e = { ...(DB._get('expenses') || {}), ...data }; DB._set('expenses', e); return e; }
-      try {
-        const exp = await API.put('/expenses', data);
-        DB._set('expenses', exp);
-        return exp;
-      } catch { this._online = false; return this.updateExpenses(data); }
+    updateExpenses(data) {
+      DB._set('expenses', { ...(DB._get('expenses') || {}), ...data });
+      API.put('/expenses', data).catch(() => {});
     },
   },
 
