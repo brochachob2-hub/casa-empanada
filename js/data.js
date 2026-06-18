@@ -145,10 +145,10 @@ const DB = {
       sync: {
     init() {
       Promise.all([
-        API.get('/dishes').then(d => d && DB._set('dishes', d)).catch(() => {}),
-        API.get('/inventory').then(i => i && DB._set('inventory', i)).catch(() => {}),
-        API.get('/orders').then(o => o && DB._set('orders', o)).catch(() => {}),
-        API.get('/expenses').then(e => e && DB._set('expenses', e)).catch(() => {}),
+        API.get('/dishes').then(r => { if (r) DB._merge('dishes', r); }).catch(() => {}),
+        API.get('/inventory').then(r => { if (r) DB._merge('inventory', r); }).catch(() => {}),
+        API.get('/orders').then(r => { if (r) DB._merge('orders', r); }).catch(() => {}),
+        API.get('/expenses').then(r => { if (r) DB._merge('expenses', r); }).catch(() => {}),
       ]);
     },
 
@@ -202,6 +202,22 @@ const DB = {
       DB._set('expenses', { ...(DB._get('expenses') || {}), ...data });
       API.put('/expenses', data).catch(() => {});
     },
+  },
+
+  _merge(collection, remote) {
+    const local = this._get(collection);
+    if (!local) { this._set(collection, remote); return; }
+    if (Array.isArray(local)) {
+      if (local.length >= remote.length) {
+        const localIds = new Set(local.map(i => i.id));
+        const newItems = remote.filter(i => !localIds.has(i.id));
+        if (newItems.length) this._set(collection, [...local, ...newItems]);
+      } else {
+        this._set(collection, remote);
+      }
+    } else {
+      this._set(collection, remote);
+    }
   },
 
   _nextLocalId(collection) {
