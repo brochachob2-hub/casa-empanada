@@ -205,19 +205,7 @@ const DB = {
   },
 
   _merge(collection, remote) {
-    const local = this._get(collection);
-    if (!local) { this._set(collection, remote); return; }
-    if (Array.isArray(local)) {
-      if (local.length >= remote.length) {
-        const localIds = new Set(local.map(i => i.id));
-        const newItems = remote.filter(i => !localIds.has(i.id));
-        if (newItems.length) this._set(collection, [...local, ...newItems]);
-      } else {
-        this._set(collection, remote);
-      }
-    } else {
-      this._set(collection, remote);
-    }
+    if (remote != null) this._set(collection, remote);
   },
 
   _nextLocalId(collection) {
