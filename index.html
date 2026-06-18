@@ -48,30 +48,44 @@
       <button class="service-btn" data-service="delivery"><span>&#x1F69A;</span> Delivery</button>
     </div>
 
+    <!-- Pickup Form -->
+    <div class="delivery-address-wrap" id="pickupForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="pickupName">Full Name <span style="color:var(--orange-500);">*</span></label>
+          <input type="text" class="form-input" id="pickupName" placeholder="Juan Dela Cruz" required>
+        </div>
+        <div class="form-group">
+          <label for="pickupPhone">Phone Number <span style="color:var(--orange-500);">*</span></label>
+          <input type="tel" class="form-input" id="pickupPhone" placeholder="0917 123 4567" required>
+        </div>
+      </div>
+    </div>
+
     <!-- Delivery Form -->
     <div class="delivery-address-wrap" id="deliveryForm">
       <div class="form-row">
         <div class="form-group">
-          <label for="custName">Full Name <span style="color:var(--orange-500);">*</span></label>
-          <input type="text" class="form-input" id="custName" placeholder="Juan Dela Cruz" required>
+          <label for="delName">Full Name <span style="color:var(--orange-500);">*</span></label>
+          <input type="text" class="form-input" id="delName" placeholder="Juan Dela Cruz" required>
         </div>
         <div class="form-group">
-          <label for="custPhone">Phone Number <span style="color:var(--orange-500);">*</span></label>
-          <input type="tel" class="form-input" id="custPhone" placeholder="0917 123 4567" required>
+          <label for="delPhone">Phone Number <span style="color:var(--orange-500);">*</span></label>
+          <input type="tel" class="form-input" id="delPhone" placeholder="0917 123 4567" required>
         </div>
       </div>
       <div class="form-group">
-        <label for="custStreet">Street / Unit / House No. <span style="color:var(--orange-500);">*</span></label>
-        <input type="text" class="form-input" id="custStreet" placeholder="123 Rizal St., Brgy. San Nicolas" required>
+        <label for="delStreet">Street / Unit / House No. <span style="color:var(--orange-500);">*</span></label>
+        <input type="text" class="form-input" id="delStreet" placeholder="123 Rizal St., Brgy. San Nicolas" required>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label for="custCity">City / Municipality <span style="color:var(--orange-500);">*</span></label>
-          <input type="text" class="form-input" id="custCity" placeholder="Tarlac City" required>
+          <label for="delCity">City / Municipality <span style="color:var(--orange-500);">*</span></label>
+          <input type="text" class="form-input" id="delCity" placeholder="Tarlac City" required>
         </div>
         <div class="form-group">
-          <label for="custProvince">Province <span style="color:var(--orange-500);">*</span></label>
-          <select class="form-select" id="custProvince" required>
+          <label for="delProvince">Province <span style="color:var(--orange-500);">*</span></label>
+          <select class="form-select" id="delProvince" required>
             <option value="">Select province</option>
             <option value="Tarlac">Tarlac</option>
             <option value="Pangasinan">Pangasinan</option>
@@ -230,17 +244,29 @@ function updateOrderBar() {
 
 function getDeliveryData() {
   return {
-    name: document.getElementById('custName').value.trim(),
-    phone: document.getElementById('custPhone').value.trim(),
-    street: document.getElementById('custStreet').value.trim(),
-    city: document.getElementById('custCity').value.trim(),
-    province: document.getElementById('custProvince').value
+    name: document.getElementById('delName').value.trim(),
+    phone: document.getElementById('delPhone').value.trim(),
+    street: document.getElementById('delStreet').value.trim(),
+    city: document.getElementById('delCity').value.trim(),
+    province: document.getElementById('delProvince').value
   };
 }
 
 function validateDelivery() {
   const d = getDeliveryData();
   return d.name && d.phone && d.street && d.city && d.province;
+}
+
+function getPickupData() {
+  return {
+    name: document.getElementById('pickupName').value.trim(),
+    phone: document.getElementById('pickupPhone').value.trim(),
+  };
+}
+
+function validatePickup() {
+  const d = getPickupData();
+  return d.name && d.phone;
 }
 
 function formatAddress(d) {
@@ -258,21 +284,31 @@ function placeOrder() {
       DB.toast('Please fill in all delivery details');
       return;
     }
+  } else {
+    if (!validatePickup()) {
+      DB.toast('Please enter your name and phone number');
+      return;
+    }
   }
 
   const container = document.getElementById('orderItems');
   const customerInfo = document.getElementById('orderCustomerInfo');
-  const addr = type === 'delivery' ? formatAddress(getDeliveryData()) : '';
 
   if (type === 'delivery') {
     const d = getDeliveryData();
+    const addr = formatAddress(d);
     customerInfo.innerHTML = `
       <strong>Name:</strong> ${d.name}<br>
       <strong>Phone:</strong> ${d.phone}<br>
       <strong>Address:</strong> ${addr}
     `;
   } else {
-    customerInfo.innerHTML = '<strong>For Pickup</strong>';
+    const d = getPickupData();
+    customerInfo.innerHTML = `
+      <strong>Name:</strong> ${d.name}<br>
+      <strong>Phone:</strong> ${d.phone}<br>
+      <strong>Pickup</strong>
+    `;
   }
 
   container.innerHTML = items.map(i => `
@@ -300,6 +336,11 @@ function closeOrderModal() { document.getElementById('orderModal').classList.rem
         name = d.name;
         phone = d.phone;
         addr = formatAddress(d);
+      } else {
+        if (!validatePickup()) { DB.toast('Please enter your name and phone'); return; }
+        const d = getPickupData();
+        name = d.name;
+        phone = d.phone;
       }
 
       const order = DB.sync.addOrder({
@@ -311,7 +352,7 @@ function closeOrderModal() { document.getElementById('orderModal').classList.rem
       DB.cart = [];
       document.getElementById('confirmOrderId').textContent = order.id;
       document.getElementById('confirmServiceText').textContent =
-        type === 'delivery' ? 'Your food is on the way! We\'ll text you at ' + phone : 'Your food will be ready for pickup!';
+        type === 'delivery' ? 'Your food is on the way! We\'ll text you at ' + phone : name + ', your food will be ready for pickup! We\'ll text you at ' + phone;
       closeOrderModal();
       updateOrderBar();
       document.getElementById('confirmModal').classList.add('open');
@@ -323,6 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderCategories();
   renderMenu();
   updateOrderBar();
+  document.getElementById('pickupForm').classList.add('visible');
 
   // Init API sync (silently falls back to localStorage if Cloudflare not ready)
   DB.sync.init();
@@ -345,14 +387,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === e.currentTarget) e.target.classList.remove('open');
   });
 
-  // Service toggle + delivery form
+  // Service toggle + pickup / delivery forms
   document.querySelectorAll('.service-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.service-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       DB.serviceType = btn.dataset.service;
-      const form = document.getElementById('deliveryForm');
-      form.classList.toggle('visible', btn.dataset.service === 'delivery');
+      const isDelivery = btn.dataset.service === 'delivery';
+      document.getElementById('deliveryForm').classList.toggle('visible', isDelivery);
+      document.getElementById('pickupForm').classList.toggle('visible', !isDelivery);
     });
   });
 
