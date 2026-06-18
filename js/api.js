@@ -1,5 +1,5 @@
 const API = {
-  base: '/api',
+  base: window.API_BASE || '/api',
 
   async request(method, path, body) {
     const opts = { method, headers: {} };
