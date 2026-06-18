@@ -88,7 +88,7 @@
   <script>
     if (!Auth.guard()) {}
 
-    const INGREDIENT_PRESETS = {
+    const DEFAULT_PRESETS = {
       'Traditional Ilocos Empanada': [
         { name: 'Rice Flour', qty: 0.15, unit: 'kg', cost: 7.60 },
         { name: 'Green Papaya', qty: 0.08, unit: 'kg', cost: 4.80 },
@@ -107,22 +107,29 @@
       'Garlic Longganisa': [
         { name: 'Longganisa (bulk)', qty: 0.15, unit: 'kg', cost: 36.00 },
         { name: 'Eggs', qty: 2, unit: 'pcs', cost: 10.00 },
-        { name: 'Garlic', qty: 0.01, unit: 'kg', cost: 1.40 },
         { name: 'Cooking Oil', qty: 0.02, unit: 'L', cost: 1.40 },
       ],
       'Bagnet Kare-Kare': [
         { name: 'Bagnet', qty: 0.15, unit: 'kg', cost: 54.00 },
         { name: 'Peanut Butter', qty: 0.04, unit: 'kg', cost: 6.40 },
-        { name: 'Garlic', qty: 0.01, unit: 'kg', cost: 1.40 },
         { name: 'Cooking Oil', qty: 0.02, unit: 'L', cost: 1.40 },
       ],
       'Sizzling Sisig': [
         { name: 'Eggs', qty: 1, unit: 'pcs', cost: 5.00 },
         { name: 'Calamansi', qty: 0.01, unit: 'kg', cost: 1.20 },
-        { name: 'Garlic', qty: 0.01, unit: 'kg', cost: 1.40 },
         { name: 'Cooking Oil', qty: 0.02, unit: 'L', cost: 1.40 },
       ],
     };
+
+    let currentDish = '';
+
+    function getIngredients(name) {
+      const saved = (DB.expenses.dishCosts || {})[name];
+      return saved || DEFAULT_PRESETS[name] || [
+        { name: 'Rice Flour', qty: 0.1, unit: 'kg', cost: 5.00 },
+        { name: 'Cooking Oil', qty: 0.02, unit: 'L', cost: 1.40 },
+      ];
+    }
 
     function populateDishSelect() {
       const sel = document.getElementById('calcDish');
@@ -166,26 +173,95 @@
       calculateCost();
     }
 
+    function readIngredientInputs() {
+      const rows = document.querySelectorAll('#ingredientRows .ing-row');
+      return Array.from(rows).map(row => ({
+        name: row.querySelector('.ing-name').value.trim(),
+        qty: parseFloat(row.querySelector('.ing-qty').value) || 0,
+        unit: row.querySelector('.ing-unit').value,
+        cost: parseFloat(row.querySelector('.ing-cost').value) || 0,
+      })).filter(i => i.name);
+    }
+
+    function saveIngredients() {
+      if (!currentDish) return;
+      const ingredients = readIngredientInputs();
+      const costs = { ...(DB.expenses.dishCosts || {}) };
+      costs[currentDish] = ingredients;
+      DB.sync.updateExpenses({ dishCosts: costs });
+      DB.toast('Ingredients saved for ' + currentDish);
+      calculateCost();
+    }
+
+    function renderIngredientEditor(dishName) {
+      currentDish = dishName;
+      const ingredients = getIngredients(dishName);
+      const container = document.getElementById('ingredientCosts');
+
+      container.innerHTML = `
+        <div id="ingredientRows" style="display:grid;gap:6px;">
+          ${ingredients.map((i, idx) => `
+            <div class="ing-row" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <input class="form-input ing-name" value="${i.name}" placeholder="Ingredient" style="flex:2;min-width:100px;padding:6px 8px;">
+              <input type="number" class="form-input ing-qty" value="${i.qty}" step="0.001" style="width:70px;padding:6px 8px;text-align:right;">
+              <select class="form-select ing-unit" style="width:65px;padding:6px 4px;">
+                ${['kg','g','L','ml','pcs','packs'].map(u => `<option value="${u}" ${i.unit === u ? 'selected' : ''}>${u}</option>`).join('')}
+              </select>
+              <span style="font-size:0.85rem;color:var(--neutral-400);">₱</span>
+              <input type="number" class="form-input ing-cost" value="${i.cost}" step="0.01" style="width:80px;padding:6px 8px;text-align:right;">
+              <button class="btn btn-danger btn-sm" onclick="this.closest('.ing-row').remove(); saveIngredients();" style="padding:4px 8px;font-size:0.8rem;">&times;</button>
+            </div>
+          `).join('')}
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn btn-ghost btn-sm" onclick="addIngredientRow()">+ Add Ingredient</button>
+          <button class="btn btn-primary btn-sm" onclick="saveIngredients()">Save Ingredients</button>
+        </div>
+        <div class="cost-total" style="margin-top:10px;border-top-color:var(--orange-300);">
+          <span>Ingredient Total</span>
+          <span>₱<span id="ingredientTotal">${ingredients.reduce((s, i) => s + i.cost, 0).toFixed(2)}</span></span>
+        </div>
+      `;
+      calculateCost();
+    }
+
+    function addIngredientRow() {
+      const rows = document.getElementById('ingredientRows');
+      const row = document.createElement('div');
+      row.className = 'ing-row';
+      row.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
+      row.innerHTML = `
+        <input class="form-input ing-name" placeholder="Ingredient" style="flex:2;min-width:100px;padding:6px 8px;">
+        <input type="number" class="form-input ing-qty" value="0" step="0.001" style="width:70px;padding:6px 8px;text-align:right;">
+        <select class="form-select ing-unit" style="width:65px;padding:6px 4px;">
+          ${['kg','g','L','ml','pcs','packs'].map(u => `<option value="${u}">${u}</option>`).join('')}
+        </select>
+        <span style="font-size:0.85rem;color:var(--neutral-400);">₱</span>
+        <input type="number" class="form-input ing-cost" value="0" step="0.01" style="width:80px;padding:6px 8px;text-align:right;">
+        <button class="btn btn-danger btn-sm" onclick="this.closest('.ing-row').remove(); saveIngredients();" style="padding:4px 8px;font-size:0.8rem;">&times;</button>
+      `;
+      rows.appendChild(row);
+      row.querySelector('.ing-name').focus();
+    }
+
     function calculateCost() {
       const dishName = document.getElementById('calcDish').value;
-      const container = document.getElementById('ingredientCosts');
       const resultContainer = document.getElementById('resultContent');
 
-      if (!dishName) {
-        container.innerHTML = '<div class="empty-state" style="padding:2rem;"><div class="icon">\u{1F4CA}</div><h3>Select a dish</h3><p>Choose a dish above to begin costing.</p></div>';
-        resultContainer.innerHTML = '<div class="empty-state" style="padding:1.5rem;"><div class="icon">\u{1F52D}</div><h3>No data</h3><p>Select a dish to see the breakdown.</p></div>';
+      if (!dishName || dishName !== currentDish) {
+        if (!dishName) {
+          document.getElementById('ingredientCosts').innerHTML = '<div class="empty-state" style="padding:2rem;"><div class="icon">\u{1F4CA}</div><h3>Select a dish</h3><p>Choose a dish above to begin costing.</p></div>';
+          resultContainer.innerHTML = '<div class="empty-state" style="padding:1.5rem;"><div class="icon">\u{1F52D}</div><h3>No data</h3><p>Select a dish to see the breakdown.</p></div>';
+        }
         return;
       }
 
-      const presets = INGREDIENT_PRESETS[dishName] || [
-        { name: 'Rice Flour', qty: 0.1, unit: 'kg', cost: 5.00 },
-        { name: 'Cooking Oil', qty: 0.02, unit: 'L', cost: 1.40 },
-        { name: 'Garlic', qty: 0.005, unit: 'kg', cost: 0.70 },
-      ];
+      const ingredients = readIngredientInputs();
+      const ingredientTotal = ingredients.reduce((s, i) => s + i.cost, 0);
+      document.getElementById('ingredientTotal').textContent = ingredientTotal.toFixed(2);
 
       const dish = DB.dishes.find(d => d.name === dishName);
       const menuPrice = dish ? dish.price : 0;
-      const ingredientTotal = presets.reduce((s, i) => s + i.cost, 0);
 
       const overhead = DB.expenses.overhead;
       const totalMonthlyOverhead = Object.values(overhead).reduce((s, v) => s + (parseFloat(v) || 0), 0);
@@ -196,21 +272,6 @@
       const suggestedPrice = totalCost * 3;
       const profitMargin = menuPrice > 0 ? ((menuPrice - totalCost) / menuPrice * 100) : 0;
       const foodCostPct = menuPrice > 0 ? (totalCost / menuPrice * 100) : 0;
-
-      container.innerHTML = `
-        <div style="display:grid;gap:4px;">
-          ${presets.map(i => `
-            <div class="cost-item">
-              <span class="label">${i.name}</span>
-              <span class="value">${i.qty} ${i.unit} — ₱${i.cost.toFixed(2)}</span>
-            </div>
-          `).join('')}
-        </div>
-        <div class="cost-total" style="margin-top:8px;border-top-color:var(--orange-300);">
-          <span>Ingredient Total</span>
-          <span>₱${ingredientTotal.toFixed(2)}</span>
-        </div>
-      `;
 
       resultContainer.innerHTML = `
         <div class="cost-item">
@@ -254,7 +315,11 @@
       `;
     }
 
-    document.getElementById('calcDish').addEventListener('change', calculateCost);
+    document.getElementById('calcDish').addEventListener('change', function() {
+      const name = this.value;
+      if (name) renderIngredientEditor(name);
+      else calculateCost();
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
       populateDishSelect();
