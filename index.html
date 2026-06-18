@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa Empanada — House of Empanadas</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="logo">
+      <span class="logo-icon">C</span>
+      Casa Empanada
+    </a>
+    <nav class="site-nav">
+      <a href="index.html" class="active">Menu</a>
+      <a href="about.html">About</a>
+      <a href="admin/login.html">Admin</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Background Carousel -->
+<div class="hero-wrapper">
+  <div class="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1600&q=80');"></div>
+  <div class="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1600&q=80');"></div>
+  <div class="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=1600&q=80');"></div>
+  <div class="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=1600&q=80');"></div>
+  <div class="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1600&q=80');"></div>
+  <section class="hero animate-in">
+    <span class="hero-emoji">&#x1F95F;</span>
+    <div class="hero-tagline">Casa Empanada &mdash; House of Empanadas</div>
+    <h1>Empanadas worth crossing<br>the bridge for.</h1>
+    <p>Crispy, golden Ilocos empanadas and Filipino comfort food &mdash; made fresh daily.</p>
+    <div class="hero-sub">
+      <span>Tarlac-based</span>
+      <span class="divider">&#x2767;</span>
+      <span>Made with love &#x1F49B;</span>
+      <br>
+      <span>Fresh ingredients, quality flavors</span>
+      <span class="divider">&#x2767;</span>
+      <span>Every bite, worth it &#x2728;</span>
+    </div>
+    <div class="service-toggle">
+      <button class="service-btn active" data-service="pickup"><span>&#x1F4E6;</span> Pickup</button>
+      <button class="service-btn" data-service="delivery"><span>&#x1F69A;</span> Delivery</button>
+    </div>
+
+    <!-- Delivery Form -->
+    <div class="delivery-address-wrap" id="deliveryForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="custName">Full Name <span style="color:var(--orange-500);">*</span></label>
+          <input type="text" class="form-input" id="custName" placeholder="Juan Dela Cruz" required>
+        </div>
+        <div class="form-group">
+          <label for="custPhone">Phone Number <span style="color:var(--orange-500);">*</span></label>
+          <input type="tel" class="form-input" id="custPhone" placeholder="0917 123 4567" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="custStreet">Street / Unit / House No. <span style="color:var(--orange-500);">*</span></label>
+        <input type="text" class="form-input" id="custStreet" placeholder="123 Rizal St., Brgy. San Nicolas" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="custCity">City / Municipality <span style="color:var(--orange-500);">*</span></label>
+          <input type="text" class="form-input" id="custCity" placeholder="Tarlac City" required>
+        </div>
+        <div class="form-group">
+          <label for="custProvince">Province <span style="color:var(--orange-500);">*</span></label>
+          <select class="form-select" id="custProvince" required>
+            <option value="">Select province</option>
+            <option value="Tarlac">Tarlac</option>
+            <option value="Pangasinan">Pangasinan</option>
+            <option value="La Union">La Union</option>
+            <option value="Ilocos Norte">Ilocos Norte</option>
+            <option value="Ilocos Sur">Ilocos Sur</option>
+            <option value="Nueva Ecija">Nueva Ecija</option>
+            <option value="Pampanga">Pampanga</option>
+            <option value="Bulacan">Bulacan</option>
+            <option value="Metro Manila">Metro Manila</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Category Pills -->
+<div class="cat-pills" id="catPills">
+  <button class="cat-pill active" data-cat="all">All</button>
+</div>
+
+<!-- Menu Grid -->
+<div class="menu-grid" id="menuGrid"></div>
+
+<!-- Order Bar -->
+<div class="order-bar" id="orderBar">
+  <span class="count" id="cartCount">0</span>
+  <span>items</span>
+  <span class="total" id="cartTotal">&#x20B1;0.00</span>
+  <button class="btn btn-primary btn-sm" id="placeOrder">Place Order</button>
+</div>
+
+<!-- QR Code FAB -->
+<button class="qr-fab" id="qrFab" title="Scan to open on your phone">&#x1F4F1;</button>
+
+<!-- Order Summary Modal -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal">
+    <h2>Order Summary</h2>
+    <div id="orderCustomerInfo" style="font-size:0.85rem;color:var(--neutral-500);margin-bottom:1rem;"></div>
+    <div id="orderItems"></div>
+    <div style="margin-top:1rem;padding-top:1rem;border-top:2px solid var(--neutral-200);display:flex;justify-content:space-between;font-size:1.2rem;font-weight:700;">
+      <span>Total</span>
+      <span id="orderTotal">&#x20B1;0.00</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeOrderModal()">Continue Shopping</button>
+      <button class="btn btn-yellow" onclick="confirmOrder()">Confirm Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal" style="text-align:center;">
+    <div style="font-size:3rem;margin-bottom:1rem;">&#x2705;</div>
+    <h2>Order Confirmed!</h2>
+    <p style="color:var(--neutral-500);margin-bottom:0.5rem;">Your order has been placed.</p>
+    <div style="font-size:0.9rem;color:var(--neutral-600);background:var(--yellow-50);padding:12px;border-radius:var(--radius-sm);margin:1rem 0;">
+      Order #<strong id="confirmOrderId" style="color:var(--orange-600);"></strong>
+    </div>
+    <p style="font-size:0.85rem;color:var(--neutral-400);" id="confirmServiceText"></p>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="btn btn-yellow" onclick="closeConfirmModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR Code Modal -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal qr-modal-content">
+    <h2>Scan to Open</h2>
+    <img id="qrImage" alt="QR Code" loading="lazy">
+    <p id="qrUrl">Loading...</p>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="btn btn-secondary" onclick="document.getElementById('qrModal').classList.remove('open')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/api.js"></script>
+<script>
+let activeCat = 'all';
+
+function renderCategories() {
+  const cats = [...new Set(DB.dishes.filter(d => d.available).map(d => d.category))];
+  const container = document.getElementById('catPills');
+  cats.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-pill';
+    btn.dataset.cat = c;
+    btn.textContent = c;
+    btn.addEventListener('click', () => filterCategory(c));
+    container.appendChild(btn);
+  });
+}
+
+function filterCategory(cat) {
+  activeCat = cat;
+  document.querySelectorAll('.cat-pill').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  renderMenu();
+}
+
+function renderMenu() {
+  const grid = document.getElementById('menuGrid');
+  const items = DB.dishes.filter(d => d.available && (activeCat === 'all' || d.category === activeCat));
+  if (!items.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="icon">&#x1F374;</div><h3>No dishes yet</h3><p>Check back soon — we\'re cooking!</p></div>';
+    return;
+  }
+  grid.innerHTML = items.map(d => {
+    const hasImage = d.image && (d.image.startsWith('http') || d.image.startsWith('data:'));
+    return `
+    <div class="menu-item">
+      <div class="menu-item-img">
+        ${hasImage ? `<img src="${d.image}" alt="${d.name}" loading="lazy">` : (d.emoji || '\u{1F955}')}
+      </div>
+      <div class="menu-item-body">
+        <h3>${d.name}</h3>
+        <p class="desc">${d.description}</p>
+        <div class="menu-item-footer">
+          <span class="price">&#x20B1;${d.price.toFixed(2)}</span>
+          <span class="cat">${d.category}</span>
+        </div>
+        <button class="btn btn-primary btn-sm" style="margin-top:12px;width:100%" onclick="addToCart(${d.id})">Add to Order</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addToCart(id) {
+  const cart = DB.cart;
+  const existing = cart.find(c => c.id === id);
+  if (existing) { existing.qty += 1; }
+  else { cart.push({ id, qty: 1 }); }
+  DB.cart = cart;
+  updateOrderBar();
+  DB.toast('Added to order');
+}
+
+function updateOrderBar() {
+  const cart = DB.cart;
+  const bar = document.getElementById('orderBar');
+  const count = document.getElementById('cartCount');
+  const total = document.getElementById('cartTotal');
+  const items = cart.map(c => { const d = DB.dishes.find(dd => dd.id === c.id); return d ? { ...d, qty: c.qty } : null; }).filter(Boolean);
+  const qty = items.reduce((s, i) => s + i.qty, 0);
+  const amt = items.reduce((s, i) => s + i.qty * i.price, 0);
+  count.textContent = qty;
+  total.textContent = '\u20B1' + amt.toFixed(2);
+  bar.classList.toggle('visible', qty > 0);
+}
+
+function getDeliveryData() {
+  return {
+    name: document.getElementById('custName').value.trim(),
+    phone: document.getElementById('custPhone').value.trim(),
+    street: document.getElementById('custStreet').value.trim(),
+    city: document.getElementById('custCity').value.trim(),
+    province: document.getElementById('custProvince').value
+  };
+}
+
+function validateDelivery() {
+  const d = getDeliveryData();
+  return d.name && d.phone && d.street && d.city && d.province;
+}
+
+function formatAddress(d) {
+  return `${d.street}, ${d.city}, ${d.province}`;
+}
+
+function placeOrder() {
+  const cart = DB.cart;
+  if (!cart.length) return;
+  const type = DB.serviceType;
+  const items = cart.map(c => { const d = DB.dishes.find(dd => dd.id === c.id); return d ? { ...d, qty: c.qty } : null; }).filter(Boolean);
+
+  if (type === 'delivery') {
+    if (!validateDelivery()) {
+      DB.toast('Please fill in all delivery details');
+      return;
+    }
+  }
+
+  const container = document.getElementById('orderItems');
+  const customerInfo = document.getElementById('orderCustomerInfo');
+  const addr = type === 'delivery' ? formatAddress(getDeliveryData()) : '';
+
+  if (type === 'delivery') {
+    const d = getDeliveryData();
+    customerInfo.innerHTML = `
+      <strong>Name:</strong> ${d.name}<br>
+      <strong>Phone:</strong> ${d.phone}<br>
+      <strong>Address:</strong> ${addr}
+    `;
+  } else {
+    customerInfo.innerHTML = '<strong>For Pickup</strong>';
+  }
+
+  container.innerHTML = items.map(i => `
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--neutral-100);">
+      <span>${i.emoji || '\u{1F955}'} ${i.name} <span style="color:var(--neutral-400);">x${i.qty}</span></span>
+      <span style="font-weight:600;">&#x20B1;${(i.qty * i.price).toFixed(2)}</span>
+    </div>
+  `).join('');
+  document.getElementById('orderTotal').textContent = '\u20B1' + items.reduce((s, i) => s + i.qty * i.price, 0).toFixed(2);
+  document.getElementById('orderModal').classList.add('open');
+}
+
+function closeOrderModal() { document.getElementById('orderModal').classList.remove('open'); }
+
+    async function confirmOrder() {
+      const cart = DB.cart;
+      if (!cart.length) return;
+      const items = cart.map(c => { const d = DB.dishes.find(dd => dd.id === c.id); return d ? { ...d, qty: c.qty } : null; }).filter(Boolean);
+      const type = DB.serviceType;
+      let name = '', phone = '', addr = '';
+
+      if (type === 'delivery') {
+        if (!validateDelivery()) { DB.toast('Please fill in all delivery details'); return; }
+        const d = getDeliveryData();
+        name = d.name;
+        phone = d.phone;
+        addr = formatAddress(d);
+      }
+
+      const order = await DB.sync.addOrder({
+        items: items.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price, emoji: i.emoji })),
+        total: items.reduce((s, i) => s + i.qty * i.price, 0),
+        serviceType: type,
+        customerName: name,
+        customerPhone: phone,
+        address: addr,
+      });
+
+      DB.cart = [];
+      document.getElementById('confirmOrderId').textContent = order.id;
+      document.getElementById('confirmServiceText').textContent =
+        type === 'delivery' ? 'Your food is on the way! We\'ll text you at ' + phone : 'Your food will be ready for pickup!';
+      closeOrderModal();
+      updateOrderBar();
+      document.getElementById('confirmModal').classList.add('open');
+    }
+
+function closeConfirmModal() { document.getElementById('confirmModal').classList.remove('open'); }
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderCategories();
+  renderMenu();
+  updateOrderBar();
+
+  // QR Code
+  const origin = window.location.origin;
+  document.getElementById('qrImage').src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(origin);
+  document.getElementById('qrUrl').textContent = origin;
+  document.getElementById('qrFab').addEventListener('click', () => {
+    document.getElementById('qrModal').classList.add('open');
+  });
+  document.getElementById('qrModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.target.classList.remove('open');
+  });
+
+  // Service toggle + delivery form
+  document.querySelectorAll('.service-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.service-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      DB.serviceType = btn.dataset.service;
+      const form = document.getElementById('deliveryForm');
+      form.classList.toggle('visible', btn.dataset.service === 'delivery');
+    });
+  });
+
+  document.querySelector('.cat-pill[data-cat="all"]').addEventListener('click', () => filterCategory('all'));
+
+  document.getElementById('placeOrder').addEventListener('click', placeOrder);
+  document.getElementById('orderBar').addEventListener('click', e => {
+    if (e.target.tagName !== 'BUTTON') placeOrder();
+  });
+  document.getElementById('orderModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeOrderModal();
+  });
+  document.getElementById('confirmModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeConfirmModal();
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Costing Calculator — Casa Empanada</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="../index.html" class="logo">
+        <span class="logo-icon">C</span>
+        Casa Empanada
+      </a>
+      <nav class="site-nav">
+        <a href="../index.html">Menu</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="orders.html">Orders</a>
+        <a href="inventory.html">Inventory</a>
+        <a href="calculator.html" class="active">Costing</a>
+        <a href="login.html" onclick="Auth.logout()" style="color:var(--orange-500);">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="page-header">
+      <h1>Costing Calculator</h1>
+      <p>Calculate the true cost of each dish — ingredients, overhead, and suggested pricing.</p>
+    </div>
+
+    <div class="calc-layout">
+      <div class="card">
+        <div class="card-header">
+          <h2>Dish & Ingredients</h2>
+        </div>
+
+        <div class="form-group">
+          <label for="calcDish">Select Dish</label>
+          <select class="form-select" id="calcDish">
+            <option value="">Choose a dish to cost...</option>
+          </select>
+        </div>
+
+        <div class="card-header" style="margin-top:1.5rem;">
+          <h3>Ingredient Cost Breakdown</h3>
+        </div>
+
+        <div id="ingredientCosts">
+          <div class="empty-state" style="padding:2rem;">
+            <div class="icon">&#x1F4CA;</div>
+            <h3>Select a dish</h3>
+            <p>Choose a dish above to begin costing.</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card calc-result">
+          <div class="card-header">
+            <h2>Cost Summary</h2>
+          </div>
+          <div id="resultContent">
+            <div class="empty-state" style="padding:1.5rem;">
+              <div class="icon">&#x1F52D;</div>
+              <h3>No data</h3>
+              <p>Select a dish to see the breakdown.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:1.5rem;">
+          <div class="card-header">
+            <h2>Monthly Overhead</h2>
+          </div>
+          <div id="overheadFields"></div>
+          <button class="btn btn-primary btn-sm" style="margin-top:1rem;" onclick="saveOverhead()">Save Overhead</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script>
+    if (!Auth.guard()) {}
+
+    const INGREDIENT_PRESETS = {
+      'Traditional Ilocos Empanada': [
+        { name: 'Rice Flour', qty: 0.15, unit: 'kg', cost: 7.60 },
+        { name: 'Green Papaya', qty: 0.08, unit: 'kg', cost: 4.80 },
+        { name: 'Monggo Sprouts', qty: 0.05, unit: 'kg', cost: 4.00 },
+        { name: 'Longganisa (bulk)', qty: 0.04, unit: 'kg', cost: 9.60 },
+        { name: 'Eggs', qty: 1, unit: 'pcs', cost: 5.00 },
+        { name: 'Cooking Oil', qty: 0.03, unit: 'L', cost: 2.20 },
+      ],
+      'Special Bagnet Empanada': [
+        { name: 'Rice Flour', qty: 0.15, unit: 'kg', cost: 7.60 },
+        { name: 'Bagnet', qty: 0.08, unit: 'kg', cost: 28.80 },
+        { name: 'Green Papaya', qty: 0.05, unit: 'kg', cost: 3.00 },
+        { name: 'Eggs', qty: 1, unit: 'pcs', cost: 5.00 },
+        { name: 'Cooking Oil', qty: 0.03, unit: 'L', cost: 2.20 },
+      ],
+      'Garlic Longganisa': [
+        { name: 'Longganisa (bulk)', qty: 0.15, unit: 'kg', cost: 36.00 },
+        { name: 'Eggs', qty: 2, unit: 'pcs', cost: 10.00 },
+        { name: 'Garlic', qty: 0.01, unit: 'kg', cost: 1.40 },
+        { name: 'Cooking Oil', qty: 0.02, unit: 'L', cost: 1.40 },
+      ],
+      'Bagnet Kare-Kare': [
+        { name: 'Bagnet', qty: 0.15, unit: 'kg', cost: 54.00 },
+        { name: 'Peanut Butter', qty: 0.04, unit: 'kg', cost: 6.40 },
+        { name: 'Garlic', qty: 0.01, unit: 'kg', cost: 1.40 },
+        { name: 'Cooking Oil', qty: 0.02, unit: 'L', cost: 1.40 },
+      ],
+      'Sizzling Sisig': [
+        { name: 'Eggs', qty: 1, unit: 'pcs', cost: 5.00 },
+        { name: 'Calamansi', qty: 0.01, unit: 'kg', cost: 1.20 },
+        { name: 'Garlic', qty: 0.01, unit: 'kg', cost: 1.40 },
+        { name: 'Cooking Oil', qty: 0.02, unit: 'L', cost: 1.40 },
+      ],
+    };
+
+    function populateDishSelect() {
+      const sel = document.getElementById('calcDish');
+      const dishes = DB.dishes.filter(d => d.available);
+      dishes.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.name;
+        opt.textContent = `${d.emoji || ''} ${d.name} — ₱${d.price.toFixed(2)}`;
+        sel.appendChild(opt);
+      });
+    }
+
+    function renderOverhead() {
+      const container = document.getElementById('overheadFields');
+      const overhead = DB.expenses.overhead;
+      const fields = [
+        { key: 'rent', label: 'Rent', icon: '\u{1F3E2}' },
+        { key: 'utilities', label: 'Utilities', icon: '\u{26A1}' },
+        { key: 'labor', label: 'Labor', icon: '\u{1F468}\u200D\u{1F373}' },
+        { key: 'marketing', label: 'Marketing', icon: '\u{1F4E2}' },
+        { key: 'misc', label: 'Miscellaneous', icon: '\u{1F4B0}' },
+      ];
+      container.innerHTML = fields.map(f => `
+        <div class="cost-item">
+          <span class="label">${f.icon} ${f.label}</span>
+          <span style="display:flex;align-items:center;gap:8px;">
+            <span>₱</span>
+            <input type="number" class="form-input" style="width:100px;padding:6px 10px;text-align:right;" value="${overhead[f.key]}" data-key="${f.key}">
+          </span>
+        </div>
+      `).join('');
+    }
+
+    async function saveOverhead() {
+      const overhead = DB.expenses.overhead;
+      document.querySelectorAll('#overheadFields input').forEach(inp => {
+        overhead[inp.dataset.key] = parseFloat(inp.value) || 0;
+      });
+      await DB.sync.updateExpenses({ overhead });
+      DB.toast('Overhead saved');
+      calculateCost();
+    }
+
+    function calculateCost() {
+      const dishName = document.getElementById('calcDish').value;
+      const container = document.getElementById('ingredientCosts');
+      const resultContainer = document.getElementById('resultContent');
+
+      if (!dishName) {
+        container.innerHTML = '<div class="empty-state" style="padding:2rem;"><div class="icon">\u{1F4CA}</div><h3>Select a dish</h3><p>Choose a dish above to begin costing.</p></div>';
+        resultContainer.innerHTML = '<div class="empty-state" style="padding:1.5rem;"><div class="icon">\u{1F52D}</div><h3>No data</h3><p>Select a dish to see the breakdown.</p></div>';
+        return;
+      }
+
+      const presets = INGREDIENT_PRESETS[dishName] || [
+        { name: 'Rice Flour', qty: 0.1, unit: 'kg', cost: 5.00 },
+        { name: 'Cooking Oil', qty: 0.02, unit: 'L', cost: 1.40 },
+        { name: 'Garlic', qty: 0.005, unit: 'kg', cost: 0.70 },
+      ];
+
+      const dish = DB.dishes.find(d => d.name === dishName);
+      const menuPrice = dish ? dish.price : 0;
+      const ingredientTotal = presets.reduce((s, i) => s + i.cost, 0);
+
+      const overhead = DB.expenses.overhead;
+      const totalMonthlyOverhead = Object.values(overhead).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+      const estimatedDishesPerMonth = menuPrice > 0 ? Math.max(200, Math.round(120000 / menuPrice)) : 300;
+      const overheadPerDish = totalMonthlyOverhead / estimatedDishesPerMonth;
+
+      const totalCost = ingredientTotal + overheadPerDish;
+      const suggestedPrice = totalCost * 3;
+      const profitMargin = menuPrice > 0 ? ((menuPrice - totalCost) / menuPrice * 100) : 0;
+      const foodCostPct = menuPrice > 0 ? (totalCost / menuPrice * 100) : 0;
+
+      container.innerHTML = `
+        <div style="display:grid;gap:4px;">
+          ${presets.map(i => `
+            <div class="cost-item">
+              <span class="label">${i.name}</span>
+              <span class="value">${i.qty} ${i.unit} — ₱${i.cost.toFixed(2)}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="cost-total" style="margin-top:8px;border-top-color:var(--orange-300);">
+          <span>Ingredient Total</span>
+          <span>₱${ingredientTotal.toFixed(2)}</span>
+        </div>
+      `;
+
+      resultContainer.innerHTML = `
+        <div class="cost-item">
+          <span class="label">Ingredients</span>
+          <span class="value">₱${ingredientTotal.toFixed(2)}</span>
+        </div>
+        <div class="cost-item">
+          <span class="label">Overhead (per dish)</span>
+          <span class="value">₱${overheadPerDish.toFixed(2)}</span>
+        </div>
+        <div class="cost-item">
+          <span class="label">Est. dishes/month</span>
+          <span class="value">${estimatedDishesPerMonth}</span>
+        </div>
+        <div class="cost-total">
+          <span>True Cost / Dish</span>
+          <span style="color:var(--orange-500);">₱${totalCost.toFixed(2)}</span>
+        </div>
+        ${menuPrice > 0 ? `
+          <div class="cost-item" style="margin-top:8px;padding-top:12px;border-top:1px solid var(--neutral-200);">
+            <span class="label">Current Menu Price</span>
+            <span class="value">₱${menuPrice.toFixed(2)}</span>
+          </div>
+          <div class="cost-item">
+            <span class="label">Food Cost %</span>
+            <span class="value badge ${foodCostPct > 35 ? 'badge-warning' : 'badge-success'}" style="font-size:0.9rem;">${foodCostPct.toFixed(1)}%</span>
+          </div>
+          <div class="cost-item">
+            <span class="label">Profit Margin</span>
+            <span class="value" style="font-weight:700;color:${profitMargin < 20 ? '#DC2626' : '#16A34A'};">${profitMargin.toFixed(1)}%</span>
+          </div>
+        ` : `
+          <div class="cost-item" style="margin-top:8px;padding-top:12px;border-top:1px solid var(--neutral-200);">
+            <span class="label">Suggested Price (3x cost)</span>
+            <span class="value" style="font-weight:700;color:var(--orange-500);">₱${suggestedPrice.toFixed(2)}</span>
+          </div>
+        `}
+        <div style="margin-top:16px;padding:12px;background:var(--orange-50);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--orange-800);">
+          <strong>Pro tip:</strong> Target a food cost between 25–35%. Adjust portion sizes or suppliers to optimize margins.
+        </div>
+      `;
+    }
+
+    document.getElementById('calcDish').addEventListener('change', calculateCost);
+
+    document.addEventListener('DOMContentLoaded', () => {
+      populateDishSelect();
+      renderOverhead();
+    });
+  </script>
+</body>
+</html>

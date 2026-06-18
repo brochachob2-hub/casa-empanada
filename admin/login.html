@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login — Casa Empanada</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--neutral-50) 0%, var(--orange-50) 100%);
+      padding: 2rem;
+    }
+    .login-card {
+      background: white;
+      border-radius: var(--radius-xl);
+      padding: 2.5rem;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--neutral-200);
+      animation: fadeUp 0.5s ease;
+    }
+    .login-card .logo {
+      justify-content: center;
+      margin-bottom: 0.5rem;
+      font-size: 1.5rem;
+    }
+    .login-card h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+    }
+    .login-card p {
+      text-align: center;
+      color: var(--neutral-500);
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+    }
+    .login-error {
+      background: #FEE2E2;
+      color: #DC2626;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .login-error.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <a href="../index.html" class="logo" style="pointer-events:none;">
+        <span class="logo-icon">C</span>
+        Casa Empanada
+      </a>
+      <h1>Admin Access</h1>
+      <p>Sign in to manage your restaurant.</p>
+
+      <div class="login-error" id="loginError">Invalid credentials. Try again.</div>
+
+      <form id="loginForm" autocomplete="off">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" class="form-input" id="username" placeholder="Enter admin username" required autofocus>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" class="form-input" id="password" placeholder="Enter admin password" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;margin-top:0.5rem;">Sign In</button>
+      </form>
+
+      <div style="text-align:center;margin-top:1.5rem;">
+        <a href="../index.html" class="btn btn-ghost" style="font-size:0.85rem;">&larr; Back to Menu</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/auth.js"></script>
+  <script>
+    if (Auth.check()) {
+      window.location.href = 'dashboard.html';
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const user = document.getElementById('username').value.trim();
+      const pass = document.getElementById('password').value;
+      const err = document.getElementById('loginError');
+
+      if (Auth.login(user, pass)) {
+        err.classList.remove('visible');
+        window.location.href = 'dashboard.html';
+      } else {
+        err.classList.add('visible');
+        document.getElementById('password').value = '';
+        document.getElementById('password').focus();
+      }
+    });
+  </script>
+</body>
+</html>

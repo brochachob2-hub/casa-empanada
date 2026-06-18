@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About Us — Casa Empanada</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .about-hero {
+    position: relative;
+    min-height: 420px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--black-soft);
+  }
+
+  .about-hero-bg {
+    position: absolute;
+    inset: 0;
+    background-image: url('https://images.unsplash.com/photo-1551218808-94e220e084d2?w=1600&q=80');
+    background-size: cover;
+    background-position: center 30%;
+    filter: brightness(0.3) saturate(1.1);
+  }
+
+  .about-hero-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.6));
+  }
+
+  .about-hero-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 4rem 1.5rem;
+    max-width: 640px;
+  }
+
+  .about-hero-content .label {
+    font-size: 0.75rem;
+    color: var(--yellow-400);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+  }
+
+  .about-hero-content h1 {
+    font-size: 3rem;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    color: white;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.4);
+  }
+
+  .about-hero-content p {
+    color: rgba(255,255,255,0.75);
+    font-size: 1.05rem;
+    margin-top: 1rem;
+    line-height: 1.6;
+  }
+
+  .about-section {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 2rem;
+  }
+
+  .about-section:last-of-type {
+    padding-bottom: 4rem;
+  }
+
+  .story-text {
+    font-size: 1.05rem;
+    line-height: 1.85;
+    color: var(--neutral-700);
+  }
+
+  .story-text p {
+    margin-bottom: 1.25rem;
+  }
+
+  .story-text .highlight {
+    color: var(--orange-600);
+    font-weight: 600;
+  }
+
+  .story-text .emph {
+    background: linear-gradient(135deg, var(--yellow-100), var(--yellow-200));
+    padding: 0 4px;
+    font-weight: 600;
+  }
+
+  .pull-quote {
+    margin: 2.5rem 0;
+    padding: 1.5rem 2rem;
+    border-left: 4px solid var(--orange-500);
+    background: var(--neutral-50);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    font-style: italic;
+    color: var(--neutral-700);
+    line-height: 1.6;
+  }
+
+  .pull-quote cite {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    font-style: normal;
+    color: var(--neutral-400);
+  }
+
+  .values-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin-top: 2rem;
+  }
+
+  .value-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    text-align: center;
+    border: 1px solid var(--neutral-200);
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+  }
+
+  .value-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .value-card .icon {
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .value-card h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .value-card p {
+    font-size: 0.82rem;
+    color: var(--neutral-500);
+    line-height: 1.5;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+    color: var(--neutral-900);
+  }
+
+  .section-title .accent {
+    color: var(--orange-500);
+  }
+
+  .divider-line {
+    width: 48px;
+    height: 3px;
+    background: var(--orange-500);
+    border-radius: 2px;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 640px) {
+    .about-hero-content h1 { font-size: 2rem; }
+    .about-hero { min-height: 320px; }
+    .about-section { padding: 2rem 1rem; }
+    .values-grid { grid-template-columns: 1fr; }
+    .pull-quote { padding: 1.25rem; font-size: 1.05rem; }
+    .story-text { font-size: 0.95rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="logo">
+      <span class="logo-icon">C</span>
+      Casa Empanada
+    </a>
+    <nav class="site-nav">
+      <a href="index.html">Menu</a>
+      <a href="about.html" class="active">About</a>
+      <a href="admin/login.html">Admin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="about-hero">
+  <div class="about-hero-bg"></div>
+  <div class="about-hero-content animate-in">
+    <div class="label">Our Story</div>
+    <h1>From a small kitchen<br>with a big dream.</h1>
+    <p>Two college students, a shared dream, and a love for Ilocano flavors that grew into something more than they ever imagined.</p>
+  </div>
+</div>
+
+<div class="about-section">
+  <div class="divider-line"></div>
+  <h2 class="section-title">How it <span class="accent">started</span></h2>
+
+  <div class="story-text">
+    <p>
+      Casa Empanada didn't begin in a boardroom or with a grand business plan. It began in a modest home kitchen in Tarlac,
+      with two college students who were simply trying to find a way to help their families.
+    </p>
+
+    <p>
+      <span class="highlight">Chloe</span> and <span class="highlight">Rap</span> were both studying at a university in Tarlac City,
+      juggling exams, deadlines, and the quiet weight of watching their families struggle.
+      Chloe's grandmother, <span class="highlight">Lolet</span>, was recovering from an illness, and the medical bills were piling up.
+      Rap's younger siblings needed school supplies, and his parents' income as market vendors was never quite enough.
+      They didn't have jobs. They had each other, a worn-out stove, and a desperate need to help the people they loved.
+    </p>
+  </div>
+</div>
+
+<div class="about-section" style="padding-top:0;">
+  <div class="divider-line"></div>
+  <h2 class="section-title">The <span class="accent">side hustle</span></h2>
+
+  <div class="story-text">
+    <p>
+      It started as a simple <span class="emph">side hustle</span> — something to do between classes.
+      Chloe's grandmother, Lolet, was from Ilocos Sur and had passed down her recipe for traditional
+      Ilocos empanada — that unmistakable orange rice-flour shell, crisp and golden, stuffed with
+      green papaya, monggo sprouts, longganisa, and a perfectly runny egg. Lolet had taught Chloe
+      how to fold the dough when she was just a little girl standing on a stool in the kitchen.
+      Rap, who had grown up helping his parents at their palengke stall, knew how to source
+      ingredients and talk to customers.
+    </p>
+
+    <p>
+      They pooled together their savings from baon and part-time project money —
+      <span class="highlight">&#x20B1;4,800</span> in total — bought ingredients from the local palengke,
+      and started making empanadas in Lolet's kitchen while she watched from her rocking chair,
+      occasionally calling out corrections. They posted on Facebook Marketplace, took orders from
+      classmates and neighbors, and delivered on a second-hand bicycle with a rusty basket
+      that Rap had fixed up himself.
+    </p>
+  </div>
+
+  <div class="pull-quote">
+    "We didn't set out to build a restaurant. We just wanted to make enough to help our families 
+    get through the month. Every empanada we sold felt like a small victory."
+    <cite>&mdash; Chloe & Rap, co-founders</cite>
+  </div>
+
+  <div class="story-text">
+    <p>
+      Word spread. Classmates from their university started ordering in bulk. Professors placed
+      orders for department meetings. What started as 20 empanadas a weekend became 50,
+      then 100, then too many to count on Lolet's single stove.
+    </p>
+  </div>
+</div>
+
+<div class="about-section" style="padding-top:0;">
+  <div class="divider-line"></div>
+  <h2 class="section-title">Falling in love with the <span class="accent">culture</span></h2>
+
+  <div class="story-text">
+    <p>
+      Somewhere between the third batch of bagnet and the thousandth empanada folded by hand, 
+      something shifted. This was no longer just about paying the bills. 
+      They found themselves researching Ilocano cooking techniques late into the night, 
+      traveling to Vigan and Laoag on their days off, learning from provincial vendors who had 
+      been making the same recipes for decades.
+    </p>
+
+    <p>
+      They discovered that Ilocano food is more than just bold flavors — it's a story of 
+      resourcefulness, of making the most of every ingredient, of transforming simple 
+      provincial fare into something deeply satisfying. The <span class="emph">bagnet</span>, 
+      the <span class="emph">pinakbet</span>, the <span class="emph">dinakdakan</span> — 
+      every dish carried generations of tradition.
+    </p>
+
+    <p>
+      They fell in love. Not just with the food, but with what it represented: 
+      <span class="highlight">hard work, family, and the quiet pride of Ilocano culture.</span>
+    </p>
+  </div>
+</div>
+
+<div class="about-section" style="padding-top:0;">
+  <div class="divider-line"></div>
+  <h2 class="section-title">What we <span class="accent">believe</span></h2>
+
+  <div class="values-grid">
+    <div class="value-card">
+      <div class="icon">&#x1F91D;</div>
+      <h3>Family First</h3>
+      <p>Every dish we serve is made the way we'd make it for our own families — with care, honesty, and the best ingredients we can find.</p>
+    </div>
+    <div class="value-card">
+      <div class="icon">&#x1F4AA;</div>
+      <h3>Never Cut Corners</h3>
+      <p>We hand-fold every empanada, make our own longganisa, and source our bagnet from trusted Ilocano suppliers. Quality over shortcuts.</p>
+    </div>
+    <div class="value-card">
+      <div class="icon">&#x1F30D;</div>
+      <h3>Ilocano Pride</h3>
+      <p>We honor the traditions of Ilocos Norte and Ilocos Sur in every recipe. This food is our heritage, and we share it with respect and joy.</p>
+    </div>
+    <div class="value-card">
+      <div class="icon">&#x1F4B0;</div>
+      <h3>Community Over Profit</h3>
+      <p>We source locally, hire from our barangay, and believe that a business should lift up the people around it — not just the bottom line.</p>
+    </div>
+    <div class="value-card">
+      <div class="icon">&#x1F33F;</div>
+      <h3>Slow & Steady</h3>
+      <p>We're not in a race. We grew from &#x20B1;4,800 and a bicycle, and we'll keep growing at our own pace — one good empanada at a time.</p>
+    </div>
+    <div class="value-card">
+      <div class="icon">&#x2764;&#xFE0F;</div>
+      <h3>Made with Love</h3>
+      <p>It sounds simple, but it's true. Every order — whether pickup or delivery — is packed with the same love that started this journey.</p>
+    </div>
+  </div>
+</div>
+
+<div class="about-section" style="padding-top:0;text-align:center;max-width:560px;">
+  <div class="divider-line" style="margin:0 auto 1.5rem;"></div>
+  <h2 class="section-title" style="font-size:1.75rem;">From our kitchen<br>to <span class="accent">your table</span></h2>
+  <div class="story-text" style="text-align:center;">
+    <p style="font-size:1.1rem;">
+      Casa Empanada is proof that you don't need deep pockets to start something meaningful. 
+      You just need a reason that matters — and for us, that reason has always been 
+      <span class="highlight">the people we love.</span>
+    </p>
+    <p style="color:var(--neutral-400);font-size:0.9rem;margin-top:1.5rem;">
+      Tarlac &middot; Est. 2023 &middot; &#x20B1;4,800 & a dream
+    </p>
+  </div>
+</div>
+
+<footer style="border-top:1px solid var(--neutral-200);padding:2rem;text-align:center;">
+  <div style="max-width:1280px;margin:0 auto;font-size:0.8rem;color:var(--neutral-400);">
+    <span style="font-weight:700;color:var(--yellow-500);">Casa Empanada</span> &mdash; House of Empanadas &middot; Tarlac-based &middot; Made with love &#x1F49B;
+  </div>
+</footer>
+
+</body>
+</html>

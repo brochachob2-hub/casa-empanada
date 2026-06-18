@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Casa Empanada</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="../index.html" class="logo">
+        <span class="logo-icon">C</span>
+        Casa Empanada
+      </a>
+      <nav class="site-nav">
+        <a href="../index.html">Menu</a>
+        <a href="dashboard.html" class="active">Dashboard</a>
+        <a href="orders.html">Orders</a>
+        <a href="inventory.html">Inventory</a>
+        <a href="calculator.html">Costing</a>
+        <a href="login.html" onclick="Auth.logout()" style="color:var(--orange-500);">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="page-header">
+      <h1>Dashboard</h1>
+      <p>Manage your menu — add new dishes with images, edit existing ones, or remove them.</p>
+    </div>
+
+    <div class="admin-layout">
+      <div class="card">
+        <div class="card-header">
+          <h2>Add Dish</h2>
+        </div>
+        <form id="dishForm" autocomplete="off">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="dishName">Name</label>
+              <input type="text" class="form-input" id="dishName" placeholder="e.g. Traditional Ilocos Empanada" required>
+            </div>
+            <div class="form-group">
+              <label for="dishPrice">Price (₱)</label>
+              <input type="number" class="form-input" id="dishPrice" placeholder="120.00" step="0.25" min="0" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="dishDesc">Description</label>
+            <textarea class="form-textarea" id="dishDesc" placeholder="Describe the dish..." required></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="dishCategory">Category</label>
+              <select class="form-select" id="dishCategory" required>
+                <option value="">Select category</option>
+                <option value="Empanadas">Empanadas</option>
+                <option value="Appetizers">Appetizers</option>
+                <option value="Rice Meals">Rice Meals</option>
+                <option value="Noodles">Noodles</option>
+                <option value="Desserts">Desserts</option>
+                <option value="Beverages">Beverages</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="dishEmoji">Emoji (fallback)</label>
+              <input type="text" class="form-input" id="dishEmoji" placeholder="&#x1F955;" maxlength="4">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Dish Image</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input type="text" class="form-input" id="dishImageURL" placeholder="Paste image URL..." style="flex:1;min-width:180px;">
+              <label class="btn btn-secondary" style="cursor:pointer;">
+                Upload File
+                <input type="file" id="dishImageFile" accept="image/*" style="display:none;">
+              </label>
+            </div>
+            <div id="imagePreview" style="display:none;margin-top:8px;position:relative;width:fit-content;">
+              <img id="previewImg" style="height:100px;border-radius:var(--radius-sm);object-fit:cover;border:1px solid var(--neutral-200);">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="clearImage()" style="position:absolute;top:-8px;right:-8px;background:white;border-radius:50%;padding:4px 8px;box-shadow:var(--shadow-sm);font-size:0.8rem;">&times;</button>
+            </div>
+          </div>
+          <div class="modal-actions" style="margin-top:0.5rem;">
+            <input type="hidden" id="editId" value="">
+            <input type="hidden" id="dishImageData" value="">
+            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">Add Dish</button>
+            <button type="button" class="btn btn-secondary" id="cancelEdit" style="display:none" onclick="cancelEdit()">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Menu</h2>
+          <span class="badge badge-success" id="menuCount">0 available</span>
+        </div>
+        <div id="dishList"></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+      <h2>Remove Dish</h2>
+      <p style="color:var(--neutral-500);">Are you sure you want to remove <strong id="deleteName"></strong>? This cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+        <button class="btn btn-danger" id="confirmDelete">Remove</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script>
+    if (!Auth.guard()) {}
+
+    let deleteTarget = null;
+    let currentImageData = '';
+
+    function handleImageUpload(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        currentImageData = e.target.result;
+        document.getElementById('dishImageData').value = currentImageData;
+        showPreview(currentImageData);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    document.getElementById('dishImageFile').addEventListener('change', e => {
+      if (e.target.files?.[0]) handleImageUpload(e.target.files[0]);
+    });
+
+    document.getElementById('dishImageURL').addEventListener('input', function() {
+      const url = this.value.trim();
+      if (url && (url.startsWith('http') || url.startsWith('data:'))) {
+        currentImageData = url;
+        document.getElementById('dishImageData').value = url;
+        showPreview(url);
+      }
+    });
+
+    function showPreview(src) {
+      const preview = document.getElementById('imagePreview');
+      const img = document.getElementById('previewImg');
+      img.src = src;
+      preview.style.display = 'block';
+    }
+
+    function clearImage() {
+      currentImageData = '';
+      document.getElementById('dishImageData').value = '';
+      document.getElementById('dishImageURL').value = '';
+      document.getElementById('dishImageFile').value = '';
+      document.getElementById('imagePreview').style.display = 'none';
+    }
+
+    function renderDishList() {
+      const list = document.getElementById('dishList');
+      const dishes = DB.dishes;
+      document.getElementById('menuCount').textContent = dishes.filter(d => d.available).length + ' available';
+      if (!dishes.length) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">&#x1F374;</div><h3>No dishes yet</h3><p>Add your first dish from the form.</p></div>';
+        return;
+      }
+      list.innerHTML = dishes.map(d => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--neutral-100);${!d.available ? 'opacity:0.5;' : ''}">
+          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+            ${d.image
+              ? `<img src="${d.image}" style="width:44px;height:44px;border-radius:var(--radius-sm);object-fit:cover;flex-shrink:0;">`
+              : `<span style="font-size:1.5rem;flex-shrink:0;">${d.emoji || '\u{1F955}'}</span>`
+            }
+            <div style="min-width:0;">
+              <strong style="font-size:0.9rem;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</strong>
+              <div style="font-size:0.8rem;color:var(--neutral-400);">${d.category} &middot; ₱${d.price.toFixed(2)}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <span class="badge ${d.available ? 'badge-success' : 'badge-danger'}">${d.available ? 'available' : 'unavailable'}</span>
+            <button class="btn btn-ghost btn-sm" onclick="toggleAvailability(${d.id})">${d.available ? 'Hide' : 'Show'}</button>
+            <button class="btn btn-secondary btn-sm" onclick="editDish(${d.id})">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="promptDelete(${d.id})">Remove</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function submitDish(e) {
+      e.preventDefault();
+      const editId = document.getElementById('editId').value;
+      const name = document.getElementById('dishName').value.trim();
+      const price = parseFloat(document.getElementById('dishPrice').value);
+      const desc = document.getElementById('dishDesc').value.trim();
+      const category = document.getElementById('dishCategory').value;
+      const emoji = document.getElementById('dishEmoji').value.trim() || '\u{1F955}';
+      const image = document.getElementById('dishImageData').value || '';
+
+      if (!name || !price || !desc || !category) return;
+
+      const data = { name, price, description: desc, category, emoji, image };
+
+      if (editId) {
+        await DB.sync.updateDish(parseInt(editId), { ...data, image: image || undefined });
+        cancelEdit();
+        DB.toast('Dish updated');
+      } else {
+        await DB.sync.addDish({ ...data, available: true });
+        document.getElementById('dishForm').reset();
+        clearImage();
+        DB.toast('Dish added');
+      }
+      renderDishList();
+    }
+
+    document.getElementById('dishForm').addEventListener('submit', submitDish);
+
+    function editDish(id) {
+      const d = DB.dishes.find(dd => dd.id === id);
+      if (!d) return;
+      document.getElementById('editId').value = d.id;
+      document.getElementById('dishName').value = d.name;
+      document.getElementById('dishPrice').value = d.price;
+      document.getElementById('dishDesc').value = d.description;
+      document.getElementById('dishCategory').value = d.category;
+      document.getElementById('dishEmoji').value = d.emoji;
+      if (d.image) {
+        currentImageData = d.image;
+        document.getElementById('dishImageData').value = d.image;
+        document.getElementById('dishImageURL').value = d.image.startsWith('http') ? d.image : '';
+        showPreview(d.image);
+      }
+      document.getElementById('submitBtn').textContent = 'Update Dish';
+      document.getElementById('cancelEdit').style.display = '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+      document.getElementById('editId').value = '';
+      document.getElementById('dishForm').reset();
+      clearImage();
+      document.getElementById('submitBtn').textContent = 'Add Dish';
+      document.getElementById('cancelEdit').style.display = 'none';
+    }
+
+    async function toggleAvailability(id) {
+      const d = DB.dishes.find(dd => dd.id === id);
+      if (!d) return;
+      await DB.sync.updateDish(id, { available: !d.available });
+      renderDishList();
+      DB.toast(d.available ? 'Dish is now visible on menu' : 'Dish hidden from menu');
+    }
+
+    function promptDelete(id) {
+      deleteTarget = id;
+      const d = DB.dishes.find(dd => dd.id === id);
+      document.getElementById('deleteName').textContent = d ? d.name : 'this dish';
+      document.getElementById('deleteModal').classList.add('open');
+    }
+
+    function closeDeleteModal() {
+      deleteTarget = null;
+      document.getElementById('deleteModal').classList.remove('open');
+    }
+
+    document.getElementById('confirmDelete').addEventListener('click', async () => {
+      if (deleteTarget === null) return;
+      await DB.sync.deleteDish(deleteTarget);
+      deleteTarget = null;
+      closeDeleteModal();
+      renderDishList();
+      DB.toast('Dish removed');
+    });
+
+    document.getElementById('deleteModal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeDeleteModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await DB.sync.init();
+      renderDishList();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orders — Casa Empanada</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="../index.html" class="logo">
+        <span class="logo-icon">C</span>
+        Casa Empanada
+      </a>
+      <nav class="site-nav">
+        <a href="../index.html">Menu</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="orders.html" class="active">Orders</a>
+        <a href="inventory.html">Inventory</a>
+        <a href="calculator.html">Costing</a>
+        <a href="login.html" onclick="Auth.logout()" style="color:var(--orange-500);">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="orders-header">
+      <div>
+        <h1>Orders</h1>
+        <p style="color:var(--neutral-500);font-size:0.95rem;margin-top:4px;">Track and manage customer orders.</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-ghost status-filter active" data-filter="all">All</button>
+        <button class="btn btn-ghost status-filter" data-filter="pending">Pending</button>
+        <button class="btn btn-ghost status-filter" data-filter="preparing">Preparing</button>
+        <button class="btn btn-ghost status-filter" data-filter="ready">Ready</button>
+        <button class="btn btn-ghost status-filter" data-filter="completed">Completed</button>
+        <button class="btn btn-ghost status-filter" data-filter="cancelled">Cancelled</button>
+      </div>
+    </div>
+
+    <div id="ordersContainer"></div>
+  </main>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script>
+    if (!Auth.guard()) {}
+
+    let statusFilter = 'all';
+
+    const STATUS_MAP = {
+      pending: { label: 'Pending', class: 'badge-yellow' },
+      preparing: { label: 'Preparing', class: 'badge-orange' },
+      ready: { label: 'Ready', class: 'badge-blue' },
+      completed: { label: 'Completed', class: 'badge-green' },
+      cancelled: { label: 'Cancelled', class: 'badge-red' }
+    };
+
+    const STATUS_FLOW = ['pending', 'preparing', 'ready', 'completed'];
+
+    function formatTime(iso) {
+      try {
+        const d = new Date(iso);
+        return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) +
+          ' at ' + d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
+      } catch { return iso; }
+    }
+
+    function renderOrders() {
+      const container = document.getElementById('ordersContainer');
+      let orders = DB.orders;
+
+      if (statusFilter !== 'all') {
+        orders = orders.filter(o => o.status === statusFilter);
+      }
+
+      orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      if (!orders.length) {
+        container.innerHTML = '<div class="card"><div class="empty-state"><div class="icon">&#x1F4CB;</div><h3>No orders yet</h3><p>' +
+          (statusFilter === 'all' ? 'Orders will appear here once customers place them.' : 'No ' + statusFilter + ' orders.') +
+          '</p></div></div>';
+        return;
+      }
+
+      container.innerHTML = orders.map(o => {
+        const statusInfo = STATUS_MAP[o.status] || STATUS_MAP.pending;
+        const itemsList = o.items.map(i => `${i.emoji || ''} ${i.name} x${i.qty}`).join(', ');
+
+        return `
+          <div class="order-card">
+            <div class="order-card-top">
+              <div>
+                <span class="order-card-id">Order #${o.id}</span>
+                <span class="badge ${statusInfo.class}" style="margin-left:8px;">${statusInfo.label}</span>
+              </div>
+              <span class="order-card-time">${formatTime(o.timestamp)}</span>
+            </div>
+
+            ${o.customerName ? `
+              <div style="font-size:0.88rem;color:var(--neutral-600);margin-bottom:6px;">
+                <strong>Customer:</strong> ${o.customerName} ${o.customerPhone ? '&middot; ' + o.customerPhone : ''}
+              </div>
+            ` : ''}
+
+            <div class="order-card-items">
+              <strong>Items:</strong> ${itemsList}
+              <br>
+              <strong>Service:</strong> ${o.serviceType === 'delivery' ? 'Delivery' : 'Pickup'}
+            </div>
+
+            ${o.serviceType === 'delivery' && o.address ? `
+              <div class="order-card-address">
+                <strong>Deliver to:</strong> ${o.address}
+              </div>
+            ` : ''}
+
+            <div class="order-card-footer">
+              <span class="order-card-total">&#x20B1;${o.total.toFixed(2)}</span>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <select class="status-select" onchange="updateStatus(${o.id}, this.value)">
+                  <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pending</option>
+                  <option value="preparing" ${o.status === 'preparing' ? 'selected' : ''}>Preparing</option>
+                  <option value="ready" ${o.status === 'ready' ? 'selected' : ''}>Ready</option>
+                  <option value="completed" ${o.status === 'completed' ? 'selected' : ''}>Completed</option>
+                  <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                </select>
+                ${o.status === 'pending' ? `
+                  <button class="btn btn-danger btn-sm" onclick="cancelOrder(${o.id})">Cancel</button>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function updateStatus(id, newStatus) {
+      await DB.sync.updateOrder(id, { status: newStatus });
+      renderOrders();
+      DB.toast('Order #' + id + ' updated to ' + STATUS_MAP[newStatus].label);
+    }
+
+    function cancelOrder(id) {
+      if (!confirm('Cancel order #' + id + '?')) return;
+      updateStatus(id, 'cancelled');
+    }
+
+    document.querySelectorAll('.status-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.status-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        statusFilter = btn.dataset.filter;
+        renderOrders();
+      });
+    });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await DB.sync.init();
+      renderOrders();
+    });
+  </script>
+</body>
+</html>

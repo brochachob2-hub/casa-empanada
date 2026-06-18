@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory — Casa Empanada</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="../index.html" class="logo">
+        <span class="logo-icon">C</span>
+        Casa Empanada
+      </a>
+      <nav class="site-nav">
+        <a href="../index.html">Menu</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="orders.html">Orders</a>
+        <a href="inventory.html" class="active">Inventory</a>
+        <a href="calculator.html">Costing</a>
+        <a href="login.html" onclick="Auth.logout()" style="color:var(--orange-500);">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="page-header">
+      <h1>Inventory</h1>
+      <p>Track ingredient stock levels and manage supply costs.</p>
+    </div>
+
+    <div class="inventory-stats" id="invStats"></div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>All Items</h2>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Add Item</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>Unit</th>
+              <th>Cost / Unit</th>
+              <th>Total Value</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="invBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal-overlay" id="invModal">
+    <div class="modal">
+      <h2 id="invModalTitle">Add Item</h2>
+      <form id="invForm" autocomplete="off">
+        <div class="form-group">
+          <label for="invName">Item Name</label>
+          <input type="text" class="form-input" id="invName" placeholder="e.g. Rice Flour" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="invQty">Quantity</label>
+            <input type="number" class="form-input" id="invQty" placeholder="10" step="0.1" min="0" required>
+          </div>
+          <div class="form-group">
+            <label for="invUnit">Unit</label>
+            <select class="form-select" id="invUnit" required>
+              <option value="kg">kg</option>
+              <option value="g">g</option>
+              <option value="L">L</option>
+              <option value="mL">mL</option>
+              <option value="pcs">pieces</option>
+              <option value="packs">packs</option>
+              <option value="bags">bags</option>
+              <option value="boxes">boxes</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="invCost">Cost per Unit (₱)</label>
+          <input type="number" class="form-input" id="invCost" placeholder="50.00" step="0.01" min="0" required>
+        </div>
+        <div class="modal-actions">
+          <input type="hidden" id="invEditId" value="">
+          <button class="btn btn-secondary" type="button" onclick="closeInvModal()">Cancel</button>
+          <button class="btn btn-primary" type="submit">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="deleteInvModal">
+    <div class="modal">
+      <h2>Remove Item</h2>
+      <p style="color:var(--neutral-500);">Remove <strong id="deleteInvName"></strong> from inventory?</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeDeleteInvModal()">Cancel</button>
+        <button class="btn btn-danger" id="confirmDeleteInv">Remove</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script>
+    if (!Auth.guard()) {}
+
+    let deleteInvTarget = null;
+
+    function renderInventory() {
+      const items = DB.inventory;
+      const tbody = document.getElementById('invBody');
+      const totalValue = items.reduce((s, i) => s + i.qty * i.cost, 0);
+      const totalItems = items.length;
+      const lowStock = items.filter(i => i.qty < 10).length;
+      const estMonthly = totalValue * 0.4;
+
+      document.getElementById('invStats').innerHTML = `
+        <div class="stat-card"><div class="label">Total Items</div><div class="value">${totalItems}</div></div>
+        <div class="stat-card"><div class="label">Inventory Value</div><div class="value orange">₱${totalValue.toFixed(2)}</div></div>
+        <div class="stat-card"><div class="label">Low Stock Items</div><div class="value ${lowStock > 0 ? 'red' : 'green'}">${lowStock}</div></div>
+        <div class="stat-card"><div class="label">Est. Monthly Usage</div><div class="value orange">₱${estMonthly.toFixed(2)}</div></div>
+      `;
+
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:3rem;color:var(--neutral-400);">No inventory items yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map(i => `
+        <tr>
+          <td><strong>${i.name}</strong></td>
+          <td>${i.qty}</td>
+          <td>${i.unit}</td>
+          <td>₱${i.cost.toFixed(2)}</td>
+          <td>₱${(i.qty * i.cost).toFixed(2)}</td>
+          <td>${i.qty < 10 ? '<span class="badge badge-danger">Low</span>' : i.qty < 30 ? '<span class="badge badge-warning">Medium</span>' : '<span class="badge badge-success">Stocked</span>'}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="editInv(${i.id})">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="promptDeleteInv(${i.id})">Remove</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openAddModal() {
+      document.getElementById('invModalTitle').textContent = 'Add Item';
+      document.getElementById('invEditId').value = '';
+      document.getElementById('invForm').reset();
+      document.getElementById('invModal').classList.add('open');
+    }
+
+    function closeInvModal() {
+      document.getElementById('invModal').classList.remove('open');
+    }
+
+    async function submitInvItem(e) {
+      e.preventDefault();
+      const editId = document.getElementById('invEditId').value;
+      const name = document.getElementById('invName').value.trim();
+      const qty = parseFloat(document.getElementById('invQty').value);
+      const unit = document.getElementById('invUnit').value;
+      const cost = parseFloat(document.getElementById('invCost').value);
+
+      if (!name || isNaN(qty) || isNaN(cost)) return;
+
+      const data = { name, qty, unit, cost };
+
+      if (editId) {
+        await DB.sync.updateInventoryItem(parseInt(editId), data);
+        DB.toast('Item updated');
+      } else {
+        await DB.sync.addInventoryItem(data);
+        DB.toast('Item added');
+      }
+      closeInvModal();
+      renderInventory();
+    }
+
+    document.getElementById('invForm').addEventListener('submit', submitInvItem);
+
+    function editInv(id) {
+      const item = DB.inventory.find(i => i.id === id);
+      if (!item) return;
+      document.getElementById('invModalTitle').textContent = 'Edit Item';
+      document.getElementById('invEditId').value = item.id;
+      document.getElementById('invName').value = item.name;
+      document.getElementById('invQty').value = item.qty;
+      document.getElementById('invUnit').value = item.unit;
+      document.getElementById('invCost').value = item.cost;
+      document.getElementById('invModal').classList.add('open');
+    }
+
+    function promptDeleteInv(id) {
+      deleteInvTarget = id;
+      const item = DB.inventory.find(i => i.id === id);
+      document.getElementById('deleteInvName').textContent = item ? item.name : 'this item';
+      document.getElementById('deleteInvModal').classList.add('open');
+    }
+
+    function closeDeleteInvModal() {
+      deleteInvTarget = null;
+      document.getElementById('deleteInvModal').classList.remove('open');
+    }
+
+    document.getElementById('confirmDeleteInv').addEventListener('click', async () => {
+      if (deleteInvTarget === null) return;
+      await DB.sync.deleteInventoryItem(deleteInvTarget);
+      deleteInvTarget = null;
+      closeDeleteInvModal();
+      renderInventory();
+      DB.toast('Item removed');
+    });
+
+    document.getElementById('invModal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeInvModal();
+    });
+
+    document.getElementById('deleteInvModal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeDeleteInvModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await DB.sync.init();
+      renderInventory();
+    });
+  </script>
+</body>
+</html>
