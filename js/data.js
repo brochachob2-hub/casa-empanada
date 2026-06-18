@@ -180,6 +180,10 @@ const DB = {
       DB._set('orders', (DB._get('orders') || []).map(o => o.id === id ? { ...o, ...data } : o));
       API.put('/orders/' + id, data).catch(() => {});
     },
+    deleteOrder(id) {
+      DB._set('orders', (DB._get('orders') || []).filter(o => o.id !== id));
+      API.del('/orders/' + id).catch(() => {});
+    },
 
     // ── Inventory ──
     addInventoryItem(data) {

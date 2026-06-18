@@ -132,6 +132,9 @@
                 ${o.status === 'pending' ? `
                   <button class="btn btn-danger btn-sm" onclick="cancelOrder(${o.id})">Cancel</button>
                 ` : ''}
+                ${o.status === 'completed' || o.status === 'cancelled' ? `
+                  <button class="btn btn-ghost btn-sm" style="color:var(--neutral-400);" onclick="deleteOrder(${o.id})">Delete</button>
+                ` : ''}
               </div>
             </div>
           </div>
@@ -148,6 +151,13 @@
     function cancelOrder(id) {
       if (!confirm('Cancel order #' + id + '?')) return;
       updateStatus(id, 'cancelled');
+    }
+
+    function deleteOrder(id) {
+      if (!confirm('Delete order #' + id + ' permanently?')) return;
+      DB.sync.deleteOrder(id);
+      renderOrders();
+      DB.toast('Order #' + id + ' deleted');
     }
 
     document.querySelectorAll('.status-filter').forEach(btn => {
