@@ -1,7 +1,7 @@
-// Cloudflare Pages Functions — API router
+// Cloudflare Pages _worker.js — catch-all API router
 // KV namespace must be bound as "KV" in Cloudflare dashboard
 
-const DEFAULT_DATA = {
+var DEFAULT_DATA = {
   dishes: [
     { id: 1, name: 'Traditional Ilocos Empanada', description: 'Crispy orange rice-flour shell filled with green papaya, monggo sprouts, longganisa, and egg. Served with spicy sukang iloko.', price: 120, category: 'Empanadas', available: true, emoji: '\u{1F95F}', image: '' },
     { id: 2, name: 'Special Bagnet Empanada', description: 'Our signature empanada with crispy bagnet, fresh tomato, and house-made vinegar dip.', price: 180, category: 'Empanadas', available: true, emoji: '\u{1F95F}', image: '' },
@@ -26,8 +26,8 @@ const DEFAULT_DATA = {
     { id: 2, name: 'Green Papaya', qty: 15, unit: 'kg', cost: 60 },
     { id: 3, name: 'Monggo Sprouts', qty: 10, unit: 'kg', cost: 80 },
     { id: 4, name: 'Longganisa (bulk)', qty: 8, unit: 'kg', cost: 240 },
-    { id: 5, name: 'Eggs', qty: 120, unit: 'pcs', cost: 5 },
-    { id: 6, name: 'Cooking Oil', qty: 20, unit: 'L', cost: 70 },
+    { id: 5, name: 'Cooking Oil', qty: 20, unit: 'L', cost: 70 },
+    { id: 6, name: 'Eggs', qty: 120, unit: 'pcs', cost: 5 },
     { id: 7, name: 'Bagnet', qty: 5, unit: 'kg', cost: 360 },
     { id: 8, name: 'Chorizo', qty: 6, unit: 'kg', cost: 300 },
     { id: 9, name: 'Tablea Chocolate', qty: 3, unit: 'kg', cost: 440 },
@@ -41,120 +41,125 @@ const DEFAULT_DATA = {
   expenses: { overhead: { rent: 25000, utilities: 8000, labor: 45000, marketing: 5000, misc: 3000 }, dishCosts: {} },
 };
 
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-  });
+async function getJSON(kv, key) {
+  var val = await kv.get(key, 'text');
+  return val ? JSON.parse(val) : null;
 }
 
-function error(msg, status = 400) {
-  return json({ error: msg }, status);
-}
-
-async function getKV(kv, key) {
-  const val = await kv.get(key, 'text');
-  if (val) return JSON.parse(val);
-  return null;
-}
-
-function putKV(kv, key, val) {
+function putJSON(kv, key, val) {
   return kv.put(key, JSON.stringify(val));
 }
 
-async function getCollection(kv, name) {
-  let data = await getKV(kv, name);
+async function getColl(kv, name) {
+  var data = await getJSON(kv, name);
   if (!data) {
     data = DEFAULT_DATA[name] || [];
-    await putKV(kv, name, data);
+    await putJSON(kv, name, data);
   }
   return data;
 }
 
 function nextId(items) {
-  return items.length ? Math.max(...items.map(i => i.id)) + 1 : 1;
+  return items.length ? Math.max.apply(null, items.map(function(i) { return i.id; })) + 1 : 1;
 }
 
-function parsePath(pathname) {
-  const parts = pathname.replace(/^\/api\//, '').split('/');
-  return { resource: parts[0], id: parts[1] ? parseInt(parts[1]) : null };
+function json(data, status) {
+  return new Response(JSON.stringify(data), {
+    status: status || 200,
+    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+  });
 }
 
-export async function onRequest(context) {
-  const { request, env } = context;
-  const url = new URL(request.url);
-  const method = request.method;
-  const { resource, id } = parsePath(url.pathname);
+function err(msg, status) {
+  return json({ error: msg }, status || 400);
+}
 
-  if (method === 'OPTIONS') {
-    return new Response(null, {
-      headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' },
-    });
-  }
+export default {
+  async fetch(request, env) {
+    var url = new URL(request.url);
+    var path = url.pathname;
+    var method = request.method;
 
-  try {
-    switch (resource) {
-      case 'dishes': return handleDishes(env.KV, method, id, request);
-      case 'orders': return handleOrders(env.KV, method, id, request);
-      case 'inventory': return handleInventory(env.KV, method, id, request);
-      case 'expenses': return handleExpenses(env.KV, method, request);
-      default: return error('Not found', 404);
+    if (!path.startsWith('/api/')) {
+      return env.ASSETS.fetch(request);
     }
-  } catch (e) {
-    return error(e.message, 500);
+
+    if (method === 'OPTIONS') {
+      return new Response(null, {
+        headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' },
+      });
+    }
+
+    try {
+      return await handleAPI(env.KV, method, path, request);
+    } catch (e) {
+      return err(e.message, 500);
+    }
+  },
+};
+
+async function handleAPI(kv, method, path, req) {
+  var parts = path.replace('/api/', '').split('/');
+  var resource = parts[0];
+  var id = parts[1] ? parseInt(parts[1]) : null;
+
+  switch (resource) {
+    case 'dishes': return handleCRUD(kv, 'dishes', method, id, req, formatDish);
+    case 'orders': return handleOrders(kv, method, id, req);
+    case 'inventory': return handleCRUD(kv, 'inventory', method, id, req, null);
+    case 'expenses': return handleExpenses(kv, method, req);
+    default: return err('Not found', 404);
   }
 }
 
-// ─── Dishes ───
-async function handleDishes(kv, method, id, req) {
-  const items = await getCollection(kv, 'dishes');
+function formatDish(body) {
+  return { available: body.available !== undefined ? body.available : true };
+}
 
-  if (method === 'GET') {
-    const available = req.headers.get('X-Filter-Available');
-    if (available === 'true') return json(items.filter(d => d.available));
-    return json(items);
-  }
+async function handleCRUD(kv, name, method, id, req, extra) {
+  var items = await getColl(kv, name);
+
+  if (method === 'GET') return json(items);
 
   if (method === 'POST') {
-    const body = await req.json();
-    const dish = { id: nextId(items), ...body, available: body.available !== undefined ? body.available : true };
-    items.push(dish);
-    await putKV(kv, 'dishes', items);
-    return json(dish, 201);
+    var body = await req.json();
+    var item = { id: nextId(items) };
+    Object.keys(body).forEach(function(k) { item[k] = body[k]; });
+    if (extra) Object.assign(item, extra(body));
+    items.push(item);
+    await putJSON(kv, name, items);
+    return json(item, 201);
   }
 
-  if (id === null) return error('ID required');
+  if (id === null) return err('ID required');
 
-  const idx = items.findIndex(i => i.id === id);
-  if (idx === -1) return error('Not found', 404);
+  var idx = items.findIndex(function(i) { return i.id === id; });
+  if (idx === -1) return err('Not found', 404);
 
   if (method === 'PUT' || method === 'PATCH') {
-    const body = await req.json();
-    items[idx] = method === 'PUT' ? { ...items[idx], ...body } : { ...items[idx], ...body };
-    await putKV(kv, 'dishes', items);
+    var body = await req.json();
+    Object.keys(body).forEach(function(k) { items[idx][k] = body[k]; });
+    await putJSON(kv, name, items);
     return json(items[idx]);
   }
 
   if (method === 'DELETE') {
-    const removed = items.splice(idx, 1)[0];
-    await putKV(kv, 'dishes', items);
-    return json(removed);
+    items.splice(idx, 1);
+    await putJSON(kv, name, items);
+    return json({ ok: true });
   }
 
-  return error('Method not allowed', 405);
+  return err('Method not allowed', 405);
 }
 
-// ─── Orders ───
 async function handleOrders(kv, method, id, req) {
-  const items = await getCollection(kv, 'orders');
+  var items = await getColl(kv, 'orders');
 
-  if (method === 'GET') {
-    return json(items);
-  }
+  if (method === 'GET') return json(items);
 
   if (method === 'POST') {
-    const body = await req.json();
-    const order = {
+    var body = await req.json();
+    var order = {
       id: nextId(items),
       items: body.items || [],
       total: body.total || 0,
@@ -166,72 +171,36 @@ async function handleOrders(kv, method, id, req) {
       timestamp: new Date().toISOString(),
     };
     items.push(order);
-    await putKV(kv, 'orders', items);
+    await putJSON(kv, 'orders', items);
     return json(order, 201);
   }
 
-  if (id === null) return error('ID required');
+  if (id === null) return err('ID required');
 
-  const idx = items.findIndex(i => i.id === id);
-  if (idx === -1) return error('Not found', 404);
+  var idx = items.findIndex(function(o) { return o.id === id; });
+  if (idx === -1) return err('Not found', 404);
 
   if (method === 'PUT') {
-    const body = await req.json();
-    items[idx] = { ...items[idx], ...body };
-    await putKV(kv, 'orders', items);
+    var body = await req.json();
+    Object.keys(body).forEach(function(k) { items[idx][k] = body[k]; });
+    await putJSON(kv, 'orders', items);
     return json(items[idx]);
   }
 
-  return error('Method not allowed', 405);
+  return err('Method not allowed', 405);
 }
 
-// ─── Inventory ───
-async function handleInventory(kv, method, id, req) {
-  const items = await getCollection(kv, 'inventory');
-
-  if (method === 'GET') return json(items);
-
-  if (method === 'POST') {
-    const body = await req.json();
-    const item = { id: nextId(items), ...body };
-    items.push(item);
-    await putKV(kv, 'inventory', items);
-    return json(item, 201);
-  }
-
-  if (id === null) return error('ID required');
-
-  const idx = items.findIndex(i => i.id === id);
-  if (idx === -1) return error('Not found', 404);
-
-  if (method === 'PUT') {
-    const body = await req.json();
-    items[idx] = { ...items[idx], ...body };
-    await putKV(kv, 'inventory', items);
-    return json(items[idx]);
-  }
-
-  if (method === 'DELETE') {
-    const removed = items.splice(idx, 1)[0];
-    await putKV(kv, 'inventory', items);
-    return json(removed);
-  }
-
-  return error('Method not allowed', 405);
-}
-
-// ─── Expenses ───
 async function handleExpenses(kv, method, req) {
-  let data = await getCollection(kv, 'expenses');
+  var data = await getColl(kv, 'expenses');
 
   if (method === 'GET') return json(data);
 
   if (method === 'PUT') {
-    const body = await req.json();
-    data = { ...data, ...body };
-    await putKV(kv, 'expenses', data);
+    var body = await req.json();
+    Object.keys(body).forEach(function(k) { data[k] = body[k]; });
+    await putJSON(kv, 'expenses', data);
     return json(data);
   }
 
-  return error('Method not allowed', 405);
+  return err('Method not allowed', 405);
 }
