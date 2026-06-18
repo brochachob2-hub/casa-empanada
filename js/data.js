@@ -144,7 +144,7 @@ const DB = {
   }
   // ─── Cloudflare API sync methods ───
   sync: {
-    _online: true,
+    _online: false,
 
     async init() {
       try {
@@ -159,10 +159,8 @@ const DB = {
         DB._set('inventory', inventory);
         DB._set('orders', orders);
         DB._set('expenses', expenses);
-        console.log('Synced from Cloudflare API');
       } catch (e) {
         this._online = false;
-        console.warn('Cloudflare API unavailable, using localStorage', e.message);
       }
     },
 
@@ -170,70 +168,105 @@ const DB = {
 
     // ── Dishes ──
     async addDish(data) {
-      if (!this._online) { const d = { id: DB.nextId('dishes'), ...data }; DB.dishes = [...DB.dishes, d]; return d; }
-      const dish = await API.post('/dishes', data);
-      DB._set('dishes', [...DB._get('dishes'), dish]);
-      return dish;
+      data.available = data.available !== undefined ? data.available : true;
+      if (!this._online) { const d = { id: DB._nextLocalId('dishes'), ...data }; DB._set('dishes', [...DB._get('dishes'), d]); return d; }
+      try {
+        const dish = await API.post('/dishes', data);
+        DB._set('dishes', [...DB._get('dishes'), dish]);
+        return dish;
+      } catch { this._online = false; return this.addDish(data); }
     },
 
     async updateDish(id, data) {
-      if (!this._online) { const d = { ...DB.dishes.find(d => d.id === id), ...data }; DB.dishes = DB.dishes.map(d => d.id === id ? { ...d, ...data } : d); return d; }
-      const dish = await API.put('/dishes/' + id, data);
-      const dishes = DB._get('dishes');
-      DB._set('dishes', dishes.map(d => d.id === id ? dish : d));
-      return dish;
+      if (!this._online) { const dishes = DB._get('dishes'); DB._set('dishes', dishes.map(d => d.id === id ? { ...d, ...data } : d)); return DB._get('dishes').find(d => d.id === id); }
+      try {
+        const dish = await API.put('/dishes/' + id, data);
+        DB._set('dishes', DB._get('dishes').map(d => d.id === id ? dish : d));
+        return dish;
+      } catch { this._online = false; return this.updateDish(id, data); }
     },
 
     async deleteDish(id) {
-      if (!this._online) { DB.dishes = DB.dishes.filter(d => d.id !== id); return; }
-      await API.del('/dishes/' + id);
-      DB._set('dishes', DB._get('dishes').filter(d => d.id !== id));
+      if (!this._online) { DB._set('dishes', DB._get('dishes').filter(d => d.id !== id)); return; }
+      try {
+        await API.del('/dishes/' + id);
+        DB._set('dishes', DB._get('dishes').filter(d => d.id !== id));
+      } catch { this._online = false; await this.deleteDish(id); }
+    },
+
+    async toggleDish(id) {
+      const dish = (DB._get('dishes') || []).find(d => d.id === id);
+      if (!dish) return;
+      return this.updateDish(id, { available: !dish.available });
     },
 
     // ── Orders ──
     async addOrder(data) {
-      if (!this._online) { return DB.placeOrder(data.items, data.serviceType, data.customerName, data.customerPhone, data.address); }
-      const order = await API.post('/orders', data);
-      DB._set('orders', [...DB._get('orders'), order]);
-      DB._set('cart', []);
-      return order;
+      if (!this._online) {
+        const orders = DB._get('orders') || [];
+        const order = { id: orders.length ? Math.max(...orders.map(o => o.id)) + 1 : 1, ...data, status: 'pending', timestamp: new Date().toISOString() };
+        DB._set('orders', [...orders, order]);
+        DB._set('cart', []);
+        return order;
+      }
+      try {
+        const order = await API.post('/orders', data);
+        DB._set('orders', [...(DB._get('orders') || []), order]);
+        DB._set('cart', []);
+        return order;
+      } catch { this._online = false; return this.addOrder(data); }
     },
 
     async updateOrder(id, data) {
-      if (!this._online) { DB.orders = DB.orders.map(o => o.id === id ? { ...o, ...data } : o); return DB.orders.find(o => o.id === id); }
-      const order = await API.put('/orders/' + id, data);
-      DB._set('orders', DB._get('orders').map(o => o.id === id ? order : o));
-      return order;
+      if (!this._online) { const orders = DB._get('orders') || []; DB._set('orders', orders.map(o => o.id === id ? { ...o, ...data } : o)); return DB._get('orders').find(o => o.id === id); }
+      try {
+        const order = await API.put('/orders/' + id, data);
+        DB._set('orders', (DB._get('orders') || []).map(o => o.id === id ? order : o));
+        return order;
+      } catch { this._online = false; return this.updateOrder(id, data); }
     },
 
     // ── Inventory ──
     async addInventoryItem(data) {
-      if (!this._online) { const i = { id: DB.nextId('inventory'), ...data }; DB.inventory = [...DB.inventory, i]; return i; }
-      const item = await API.post('/inventory', data);
-      DB._set('inventory', [...DB._get('inventory'), item]);
-      return item;
+      if (!this._online) { const i = { id: DB._nextLocalId('inventory'), ...data }; DB._set('inventory', [...(DB._get('inventory') || []), i]); return i; }
+      try {
+        const item = await API.post('/inventory', data);
+        DB._set('inventory', [...(DB._get('inventory') || []), item]);
+        return item;
+      } catch { this._online = false; return this.addInventoryItem(data); }
     },
 
     async updateInventoryItem(id, data) {
-      if (!this._online) { DB.inventory = DB.inventory.map(i => i.id === id ? { ...i, ...data } : i); return DB.inventory.find(i => i.id === id); }
-      const item = await API.put('/inventory/' + id, data);
-      DB._set('inventory', DB._get('inventory').map(i => i.id === id ? item : i));
-      return item;
+      if (!this._online) { const inv = DB._get('inventory') || []; DB._set('inventory', inv.map(i => i.id === id ? { ...i, ...data } : i)); return DB._get('inventory').find(i => i.id === id); }
+      try {
+        const item = await API.put('/inventory/' + id, data);
+        DB._set('inventory', (DB._get('inventory') || []).map(i => i.id === id ? item : i));
+        return item;
+      } catch { this._online = false; return this.updateInventoryItem(id, data); }
     },
 
     async deleteInventoryItem(id) {
-      if (!this._online) { DB.inventory = DB.inventory.filter(i => i.id !== id); return; }
-      await API.del('/inventory/' + id);
-      DB._set('inventory', DB._get('inventory').filter(i => i.id !== id));
+      if (!this._online) { DB._set('inventory', (DB._get('inventory') || []).filter(i => i.id !== id)); return; }
+      try {
+        await API.del('/inventory/' + id);
+        DB._set('inventory', (DB._get('inventory') || []).filter(i => i.id !== id));
+      } catch { this._online = false; await this.deleteInventoryItem(id); }
     },
 
     // ── Expenses ──
     async updateExpenses(data) {
-      if (!this._online) { DB.expenses = { ...DB.expenses, ...data }; return DB.expenses; }
-      const exp = await API.put('/expenses', data);
-      DB._set('expenses', exp);
-      return exp;
+      if (!this._online) { const e = { ...(DB._get('expenses') || {}), ...data }; DB._set('expenses', e); return e; }
+      try {
+        const exp = await API.put('/expenses', data);
+        DB._set('expenses', exp);
+        return exp;
+      } catch { this._online = false; return this.updateExpenses(data); }
     },
+  },
+
+  _nextLocalId(collection) {
+    const items = DB._get(collection) || [];
+    return items.length ? Math.max(...items.map(i => i.id)) + 1 : 1;
   },
 };
 
