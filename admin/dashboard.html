@@ -209,6 +209,7 @@
         DB._set('dishes', dishes.map(d => d.id === parseInt(editId) ? { ...d, ...data, image: image || undefined } : d));
         cancelEdit();
         DB.toast('Dish updated');
+        API.put('/dishes/' + parseInt(editId), data).catch(() => {});
       } else {
         const dishes = DB._get('dishes') || [];
         const newDish = { id: DB._nextLocalId('dishes'), ...data, available: true };
@@ -216,6 +217,7 @@
         document.getElementById('dishForm').reset();
         clearImage();
         DB.toast('Dish added');
+        API.post('/dishes', data).catch(() => {});
       }
       renderDishList();
     }
@@ -254,9 +256,11 @@
       const dishes = DB._get('dishes');
       const d = dishes.find(dd => dd.id === id);
       if (!d) return;
-      DB._set('dishes', dishes.map(dd => dd.id === id ? { ...dd, available: !dd.available } : dd));
+      const newVal = !d.available;
+      DB._set('dishes', dishes.map(dd => dd.id === id ? { ...dd, available: newVal } : dd));
       renderDishList();
-      DB.toast(d.available ? 'Dish is now visible on menu' : 'Dish hidden from menu');
+      DB.toast(newVal ? 'Dish is now visible on menu' : 'Dish hidden from menu');
+      API.put('/dishes/' + id, { available: newVal }).catch(() => {});
     }
 
     function promptDelete(id) {
@@ -273,11 +277,13 @@
 
     document.getElementById('confirmDelete').addEventListener('click', () => {
       if (deleteTarget === null) return;
+      const id = deleteTarget;
       DB._set('dishes', DB._get('dishes').filter(d => d.id !== deleteTarget));
       deleteTarget = null;
       closeDeleteModal();
       renderDishList();
       DB.toast('Dish removed');
+      API.del('/dishes/' + id).catch(() => {});
     });
 
     document.getElementById('deleteModal').addEventListener('click', e => {
@@ -286,6 +292,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       renderDishList();
+      DB.sync.init();
     });
   </script>
 </body>

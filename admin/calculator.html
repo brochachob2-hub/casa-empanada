@@ -164,6 +164,7 @@
       DB._set('expenses', { ...expenses, overhead });
       DB.toast('Overhead saved');
       calculateCost();
+      API.put('/expenses', { overhead }).catch(() => {});
     }
 
     function calculateCost() {

@@ -143,6 +143,7 @@
       DB._set('orders', orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
       renderOrders();
       DB.toast('Order #' + id + ' updated to ' + STATUS_MAP[newStatus].label);
+      API.put('/orders/' + id, { status: newStatus }).catch(() => {});
     }
 
     function cancelOrder(id) {
@@ -161,6 +162,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       renderOrders();
+      DB.sync.init();
     });
   </script>
 </body>
