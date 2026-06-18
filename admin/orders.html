@@ -138,8 +138,9 @@
       }).join('');
     }
 
-    async function updateStatus(id, newStatus) {
-      await DB.sync.updateOrder(id, { status: newStatus });
+    function updateStatus(id, newStatus) {
+      const orders = DB._get('orders') || [];
+      DB._set('orders', orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
       renderOrders();
       DB.toast('Order #' + id + ' updated to ' + STATUS_MAP[newStatus].label);
     }
@@ -158,8 +159,7 @@
       });
     });
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      await DB.sync.init();
+    document.addEventListener('DOMContentLoaded', () => {
       renderOrders();
     });
   </script>

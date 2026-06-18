@@ -141,9 +141,8 @@ const DB = {
       overhead: { rent: 25000, utilities: 8000, labor: 45000, marketing: 5000, misc: 3000 },
       dishCosts: {}
     };
-  }
-  // ─── Cloudflare API sync methods ───
-  sync: {
+      },
+      sync: {
     _online: false,
 
     async init() {

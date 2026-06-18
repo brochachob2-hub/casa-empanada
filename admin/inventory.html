@@ -162,7 +162,7 @@
       document.getElementById('invModal').classList.remove('open');
     }
 
-    async function submitInvItem(e) {
+    function submitInvItem(e) {
       e.preventDefault();
       const editId = document.getElementById('invEditId').value;
       const name = document.getElementById('invName').value.trim();
@@ -175,10 +175,13 @@
       const data = { name, qty, unit, cost };
 
       if (editId) {
-        await DB.sync.updateInventoryItem(parseInt(editId), data);
+        const inv = DB._get('inventory') || [];
+        DB._set('inventory', inv.map(i => i.id === parseInt(editId) ? { ...i, ...data } : i));
         DB.toast('Item updated');
       } else {
-        await DB.sync.addInventoryItem(data);
+        const inv = DB._get('inventory') || [];
+        const newItem = { id: DB._nextLocalId('inventory'), ...data };
+        DB._set('inventory', [...inv, newItem]);
         DB.toast('Item added');
       }
       closeInvModal();
@@ -211,9 +214,9 @@
       document.getElementById('deleteInvModal').classList.remove('open');
     }
 
-    document.getElementById('confirmDeleteInv').addEventListener('click', async () => {
+    document.getElementById('confirmDeleteInv').addEventListener('click', () => {
       if (deleteInvTarget === null) return;
-      await DB.sync.deleteInventoryItem(deleteInvTarget);
+      DB._set('inventory', (DB._get('inventory') || []).filter(i => i.id !== deleteInvTarget));
       deleteInvTarget = null;
       closeDeleteInvModal();
       renderInventory();
@@ -228,8 +231,7 @@
       if (e.target === e.currentTarget) closeDeleteInvModal();
     });
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      await DB.sync.init();
+    document.addEventListener('DOMContentLoaded', () => {
       renderInventory();
     });
   </script>

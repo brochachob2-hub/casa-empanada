@@ -190,7 +190,7 @@
       `).join('');
     }
 
-    async function submitDish(e) {
+    function submitDish(e) {
       e.preventDefault();
       const editId = document.getElementById('editId').value;
       const name = document.getElementById('dishName').value.trim();
@@ -205,11 +205,14 @@
       const data = { name, price, description: desc, category, emoji, image };
 
       if (editId) {
-        await DB.sync.updateDish(parseInt(editId), { ...data, image: image || undefined });
+        const dishes = DB._get('dishes');
+        DB._set('dishes', dishes.map(d => d.id === parseInt(editId) ? { ...d, ...data, image: image || undefined } : d));
         cancelEdit();
         DB.toast('Dish updated');
       } else {
-        await DB.sync.addDish({ ...data, available: true });
+        const dishes = DB._get('dishes') || [];
+        const newDish = { id: DB._nextLocalId('dishes'), ...data, available: true };
+        DB._set('dishes', [...dishes, newDish]);
         document.getElementById('dishForm').reset();
         clearImage();
         DB.toast('Dish added');
@@ -247,10 +250,11 @@
       document.getElementById('cancelEdit').style.display = 'none';
     }
 
-    async function toggleAvailability(id) {
-      const d = DB.dishes.find(dd => dd.id === id);
+    function toggleAvailability(id) {
+      const dishes = DB._get('dishes');
+      const d = dishes.find(dd => dd.id === id);
       if (!d) return;
-      await DB.sync.updateDish(id, { available: !d.available });
+      DB._set('dishes', dishes.map(dd => dd.id === id ? { ...dd, available: !dd.available } : dd));
       renderDishList();
       DB.toast(d.available ? 'Dish is now visible on menu' : 'Dish hidden from menu');
     }
@@ -267,9 +271,9 @@
       document.getElementById('deleteModal').classList.remove('open');
     }
 
-    document.getElementById('confirmDelete').addEventListener('click', async () => {
+    document.getElementById('confirmDelete').addEventListener('click', () => {
       if (deleteTarget === null) return;
-      await DB.sync.deleteDish(deleteTarget);
+      DB._set('dishes', DB._get('dishes').filter(d => d.id !== deleteTarget));
       deleteTarget = null;
       closeDeleteModal();
       renderDishList();
@@ -280,8 +284,7 @@
       if (e.target === e.currentTarget) closeDeleteModal();
     });
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      await DB.sync.init();
+    document.addEventListener('DOMContentLoaded', () => {
       renderDishList();
     });
   </script>

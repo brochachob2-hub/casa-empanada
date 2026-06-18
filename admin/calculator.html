@@ -155,12 +155,13 @@
       `).join('');
     }
 
-    async function saveOverhead() {
+    function saveOverhead() {
       const overhead = DB.expenses.overhead;
       document.querySelectorAll('#overheadFields input').forEach(inp => {
         overhead[inp.dataset.key] = parseFloat(inp.value) || 0;
       });
-      await DB.sync.updateExpenses({ overhead });
+      const expenses = DB._get('expenses') || {};
+      DB._set('expenses', { ...expenses, overhead });
       DB.toast('Overhead saved');
       calculateCost();
     }

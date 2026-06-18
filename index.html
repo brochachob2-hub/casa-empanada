@@ -287,52 +287,41 @@ function placeOrder() {
 
 function closeOrderModal() { document.getElementById('orderModal').classList.remove('open'); }
 
-    async function confirmOrder() {
+    function confirmOrder() {
       const cart = DB.cart;
       if (!cart.length) return;
-      try {
-        const items = cart.map(c => { const d = DB.dishes.find(dd => dd.id === c.id); return d ? { ...d, qty: c.qty } : null; }).filter(Boolean);
-        const type = DB.serviceType;
-        let name = '', phone = '', addr = '';
+      const items = cart.map(c => { const d = DB.dishes.find(dd => dd.id === c.id); return d ? { ...d, qty: c.qty } : null; }).filter(Boolean);
+      const type = DB.serviceType;
+      let name = '', phone = '', addr = '';
 
-        if (type === 'delivery') {
-          if (!validateDelivery()) { DB.toast('Please fill in all delivery details'); return; }
-          const d = getDeliveryData();
-          name = d.name;
-          phone = d.phone;
-          addr = formatAddress(d);
-        }
-
-        const order = await DB.sync.addOrder({
-          items: items.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price, emoji: i.emoji })),
-          total: items.reduce((s, i) => s + i.qty * i.price, 0),
-          serviceType: type,
-          customerName: name,
-          customerPhone: phone,
-          address: addr,
-        });
-
-        DB.cart = [];
-        document.getElementById('confirmOrderId').textContent = order.id;
-        document.getElementById('confirmServiceText').textContent =
-          type === 'delivery' ? 'Your food is on the way! We\'ll text you at ' + phone : 'Your food will be ready for pickup!';
-        closeOrderModal();
-        updateOrderBar();
-        document.getElementById('confirmModal').classList.add('open');
-      } catch (e) {
-        DB.toast('Something went wrong. Please try again.');
+      if (type === 'delivery') {
+        if (!validateDelivery()) { DB.toast('Please fill in all delivery details'); return; }
+        const d = getDeliveryData();
+        name = d.name;
+        phone = d.phone;
+        addr = formatAddress(d);
       }
+
+      const order = DB.placeOrder(items, type, name, phone, addr);
+
+      DB.cart = [];
+      document.getElementById('confirmOrderId').textContent = order.id;
+      document.getElementById('confirmServiceText').textContent =
+        type === 'delivery' ? 'Your food is on the way! We\'ll text you at ' + phone : 'Your food will be ready for pickup!';
+      closeOrderModal();
+      updateOrderBar();
+      document.getElementById('confirmModal').classList.add('open');
     }
 
 function closeConfirmModal() { document.getElementById('confirmModal').classList.remove('open'); }
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   renderCategories();
   renderMenu();
   updateOrderBar();
 
   // Init API sync (silently falls back to localStorage if Cloudflare not ready)
-  await DB.sync.init();
+  DB.sync.init();
 
   // QR Code — generate inline with QRServer API + canvas fallback
   const origin = window.location.origin;
