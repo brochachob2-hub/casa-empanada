@@ -82,6 +82,7 @@
   </main>
 
   <script src="../js/data.js"></script>
+  <script src="../js/api.js"></script>
   <script src="../js/auth.js"></script>
   <script>
     if (!Auth.guard()) {}
@@ -159,8 +160,7 @@
       document.querySelectorAll('#overheadFields input').forEach(inp => {
         overhead[inp.dataset.key] = parseFloat(inp.value) || 0;
       });
-      const exp = DB._get('expenses') || {};
-      DB._set('expenses', { ...exp, overhead });
+      DB.sync.updateExpenses({ overhead });
       DB.toast('Overhead saved');
       calculateCost();
     }

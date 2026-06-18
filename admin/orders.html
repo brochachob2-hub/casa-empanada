@@ -44,6 +44,7 @@
   </main>
 
   <script src="../js/data.js"></script>
+  <script src="../js/api.js"></script>
   <script src="../js/auth.js"></script>
   <script>
     if (!Auth.guard()) {}
@@ -138,7 +139,7 @@
     }
 
     function updateStatus(id, newStatus) {
-      DB._set('orders', (DB._get('orders') || []).map(o => o.id === id ? { ...o, status: newStatus } : o));
+      DB.sync.updateOrder(id, { status: newStatus });
       renderOrders();
       DB.toast('Order #' + id + ' updated to ' + STATUS_MAP[newStatus].label);
     }
@@ -159,6 +160,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       renderOrders();
+      DB.sync.init();
     });
   </script>
 </body>

@@ -141,6 +141,83 @@ const DB = {
       overhead: { rent: 25000, utilities: 8000, labor: 45000, marketing: 5000, misc: 3000 },
       dishCosts: {}
     };
+      },
+      sync: {
+    init() {
+      Promise.all([
+        API.get('/dishes').then(r => { if (r) DB._merge('dishes', r); }).catch(() => {}),
+        API.get('/inventory').then(r => { if (r) DB._merge('inventory', r); }).catch(() => {}),
+        API.get('/orders').then(r => { if (r) DB._merge('orders', r); }).catch(() => {}),
+        API.get('/expenses').then(r => { if (r) DB._merge('expenses', r); }).catch(() => {}),
+      ]);
+    },
+
+    // ── Dishes ──
+    addDish(data) {
+      const d = { id: DB._nextLocalId('dishes'), ...data, available: true };
+      DB._set('dishes', [...(DB._get('dishes') || []), d]);
+      API.post('/dishes', data).catch(() => {});
+      return d;
+    },
+    updateDish(id, data) {
+      DB._set('dishes', (DB._get('dishes') || []).map(i => i.id === id ? { ...i, ...data } : i));
+      API.put('/dishes/' + id, data).catch(() => {});
+    },
+    deleteDish(id) {
+      DB._set('dishes', (DB._get('dishes') || []).filter(i => i.id !== id));
+      API.del('/dishes/' + id).catch(() => {});
+    },
+
+    // ── Orders ──
+    addOrder(data) {
+      const orders = DB._get('orders') || [];
+      const order = { id: orders.length ? Math.max(...orders.map(o => o.id)) + 1 : 1, ...data, status: 'pending', timestamp: new Date().toISOString() };
+      DB._set('orders', [...orders, order]);
+      API.post('/orders', data).catch(() => {});
+      return order;
+    },
+    updateOrder(id, data) {
+      DB._set('orders', (DB._get('orders') || []).map(o => o.id === id ? { ...o, ...data } : o));
+      API.put('/orders/' + id, data).catch(() => {});
+    },
+
+    // ── Inventory ──
+    addInventoryItem(data) {
+      const item = { id: DB._nextLocalId('inventory'), ...data };
+      DB._set('inventory', [...(DB._get('inventory') || []), item]);
+      API.post('/inventory', data).catch(() => {});
+      return item;
+    },
+    updateInventoryItem(id, data) {
+      DB._set('inventory', (DB._get('inventory') || []).map(i => i.id === id ? { ...i, ...data } : i));
+      API.put('/inventory/' + id, data).catch(() => {});
+    },
+    deleteInventoryItem(id) {
+      DB._set('inventory', (DB._get('inventory') || []).filter(i => i.id !== id));
+      API.del('/inventory/' + id).catch(() => {});
+    },
+
+    // ── Expenses ──
+    updateExpenses(data) {
+      DB._set('expenses', { ...(DB._get('expenses') || {}), ...data });
+      API.put('/expenses', data).catch(() => {});
+    },
+  },
+
+  _merge(collection, remote) {
+    const local = this._get(collection);
+    if (!local) { this._set(collection, remote); return; }
+    if (Array.isArray(local)) {
+      if (local.length >= remote.length) {
+        const localIds = new Set(local.map(i => i.id));
+        const newItems = remote.filter(i => !localIds.has(i.id));
+        if (newItems.length) this._set(collection, [...local, ...newItems]);
+      } else {
+        this._set(collection, remote);
+      }
+    } else {
+      this._set(collection, remote);
+    }
   },
 
   _nextLocalId(collection) {

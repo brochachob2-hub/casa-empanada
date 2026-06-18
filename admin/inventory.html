@@ -108,6 +108,7 @@
   </div>
 
   <script src="../js/data.js"></script>
+  <script src="../js/api.js"></script>
   <script src="../js/auth.js"></script>
   <script>
     if (!Auth.guard()) {}
@@ -174,12 +175,10 @@
       const data = { name, qty, unit, cost };
 
       if (editId) {
-        const inv = DB._get('inventory') || [];
-        DB._set('inventory', inv.map(i => i.id === parseInt(editId) ? { ...i, ...data } : i));
+        DB.sync.updateInventoryItem(parseInt(editId), data);
         DB.toast('Item updated');
       } else {
-        const inv = DB._get('inventory') || [];
-        DB._set('inventory', [...inv, { id: DB._nextLocalId('inventory'), ...data }]);
+        DB.sync.addInventoryItem(data);
         DB.toast('Item added');
       }
       closeInvModal();
@@ -214,7 +213,7 @@
 
     document.getElementById('confirmDeleteInv').addEventListener('click', () => {
       if (deleteInvTarget === null) return;
-      DB._set('inventory', (DB._get('inventory') || []).filter(i => i.id !== deleteInvTarget));
+      DB.sync.deleteInventoryItem(deleteInvTarget);
       deleteInvTarget = null;
       closeDeleteInvModal();
       renderInventory();
@@ -231,6 +230,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       renderInventory();
+      DB.sync.init();
     });
   </script>
 </body>

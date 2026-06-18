@@ -113,6 +113,7 @@
   </div>
 
   <script src="../js/data.js"></script>
+  <script src="../js/api.js"></script>
   <script src="../js/auth.js"></script>
   <script>
     if (!Auth.guard()) {}
@@ -204,13 +205,11 @@
       const data = { name, price, description: desc, category, emoji, image };
 
       if (editId) {
-        const dishes = DB._get('dishes');
-        DB._set('dishes', dishes.map(d => d.id === parseInt(editId) ? { ...d, ...data, image: image || undefined } : d));
+        DB.sync.updateDish(parseInt(editId), { ...data, image: image || undefined });
         cancelEdit();
         DB.toast('Dish updated');
       } else {
-        const dishes = DB._get('dishes') || [];
-        DB._set('dishes', [...dishes, { id: DB._nextLocalId('dishes'), ...data, available: true }]);
+        DB.sync.addDish({ ...data, available: true });
         document.getElementById('dishForm').reset();
         clearImage();
         DB.toast('Dish added');
@@ -251,7 +250,7 @@
     function toggleAvailability(id) {
       const d = DB.dishes.find(dd => dd.id === id);
       if (!d) return;
-      DB._set('dishes', DB._get('dishes').map(dd => dd.id === id ? { ...dd, available: !dd.available } : dd));
+      DB.sync.updateDish(id, { available: !d.available });
       renderDishList();
       DB.toast(!d.available ? 'Dish is now visible on menu' : 'Dish hidden from menu');
     }
@@ -270,7 +269,7 @@
 
     document.getElementById('confirmDelete').addEventListener('click', () => {
       if (deleteTarget === null) return;
-      DB._set('dishes', DB._get('dishes').filter(d => d.id !== deleteTarget));
+      DB.sync.deleteDish(deleteTarget);
       deleteTarget = null;
       closeDeleteModal();
       renderDishList();
@@ -283,6 +282,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       renderDishList();
+      DB.sync.init();
     });
   </script>
 </body>
