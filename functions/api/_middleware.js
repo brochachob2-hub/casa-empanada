@@ -1,4 +1,4 @@
-// Cloudflare Pages _worker.js — catch-all API router
+// Cloudflare Pages Functions — intercepts ALL /api/* requests
 // KV namespace must be bound as "KV" in Cloudflare dashboard
 
 var DEFAULT_DATA = {
@@ -74,78 +74,73 @@ function err(msg, status) {
   return json({ error: msg }, status || 400);
 }
 
-export default {
-  async fetch(request, env) {
-    var url = new URL(request.url);
-    var path = url.pathname;
-    var method = request.method;
+export async function onRequest(context) {
+  var request = context.request;
+  var env = context.env;
+  var url = new URL(request.url);
+  var path = url.pathname;
+  var method = request.method;
 
-    if (!path.startsWith('/api/')) {
-      return env.ASSETS.fetch(request);
-    }
+  // CORS preflight
+  if (method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
+  }
 
-    if (method === 'OPTIONS') {
-      return new Response(null, {
-        headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' },
-      });
-    }
-
-    try {
-      return await handleAPI(env.KV, method, path, request);
-    } catch (e) {
-      return err(e.message, 500);
-    }
-  },
-};
-
-async function handleAPI(kv, method, path, req) {
   var parts = path.replace('/api/', '').split('/');
   var resource = parts[0];
   var id = parts[1] ? parseInt(parts[1]) : null;
 
-  switch (resource) {
-    case 'dishes': return handleCRUD(kv, 'dishes', method, id, req, formatDish);
-    case 'orders': return handleOrders(kv, method, id, req);
-    case 'inventory': return handleCRUD(kv, 'inventory', method, id, req, null);
-    case 'expenses': return handleExpenses(kv, method, req);
-    default: return err('Not found', 404);
+  try {
+    switch (resource) {
+      case 'dishes': return await handleDishes(env.KV, method, id, request);
+      case 'orders': return await handleOrders(env.KV, method, id, request);
+      case 'inventory': return await handleCRUD(env.KV, 'inventory', method, id, request);
+      case 'expenses': return await handleExpenses(env.KV, method, request);
+      default: return err('Not found', 404);
+    }
+  } catch (e) {
+    return err(e.message, 500);
   }
 }
 
-function formatDish(body) {
-  return { available: body.available !== undefined ? body.available : true };
-}
+async function handleDishes(kv, method, id, req) {
+  var items = await getColl(kv, 'dishes');
 
-async function handleCRUD(kv, name, method, id, req, extra) {
-  var items = await getColl(kv, name);
-
-  if (method === 'GET') return json(items);
+  if (method === 'GET') {
+    var avail = req.headers.get('X-Filter-Available');
+    return json(avail === 'true' ? items.filter(function(d) { return d.available; }) : items);
+  }
 
   if (method === 'POST') {
     var body = await req.json();
-    var item = { id: nextId(items) };
-    Object.keys(body).forEach(function(k) { item[k] = body[k]; });
-    if (extra) Object.assign(item, extra(body));
-    items.push(item);
-    await putJSON(kv, name, items);
-    return json(item, 201);
+    var dish = { id: nextId(items) };
+    Object.keys(body).forEach(function(k) { dish[k] = body[k]; });
+    if (dish.available === undefined) dish.available = true;
+    items.push(dish);
+    await putJSON(kv, 'dishes', items);
+    return json(dish, 201);
   }
 
   if (id === null) return err('ID required');
-
   var idx = items.findIndex(function(i) { return i.id === id; });
   if (idx === -1) return err('Not found', 404);
 
   if (method === 'PUT' || method === 'PATCH') {
     var body = await req.json();
     Object.keys(body).forEach(function(k) { items[idx][k] = body[k]; });
-    await putJSON(kv, name, items);
+    await putJSON(kv, 'dishes', items);
     return json(items[idx]);
   }
 
   if (method === 'DELETE') {
     items.splice(idx, 1);
-    await putJSON(kv, name, items);
+    await putJSON(kv, 'dishes', items);
     return json({ ok: true });
   }
 
@@ -176,7 +171,6 @@ async function handleOrders(kv, method, id, req) {
   }
 
   if (id === null) return err('ID required');
-
   var idx = items.findIndex(function(o) { return o.id === id; });
   if (idx === -1) return err('Not found', 404);
 
@@ -190,11 +184,43 @@ async function handleOrders(kv, method, id, req) {
   return err('Method not allowed', 405);
 }
 
+async function handleCRUD(kv, name, method, id, req) {
+  var items = await getColl(kv, name);
+
+  if (method === 'GET') return json(items);
+  if (method === 'POST') {
+    var body = await req.json();
+    var item = { id: nextId(items) };
+    Object.keys(body).forEach(function(k) { item[k] = body[k]; });
+    items.push(item);
+    await putJSON(kv, name, items);
+    return json(item, 201);
+  }
+
+  if (id === null) return err('ID required');
+  var idx = items.findIndex(function(i) { return i.id === id; });
+  if (idx === -1) return err('Not found', 404);
+
+  if (method === 'PUT' || method === 'PATCH') {
+    var body = await req.json();
+    Object.keys(body).forEach(function(k) { items[idx][k] = body[k]; });
+    await putJSON(kv, name, items);
+    return json(items[idx]);
+  }
+
+  if (method === 'DELETE') {
+    items.splice(idx, 1);
+    await putJSON(kv, name, items);
+    return json({ ok: true });
+  }
+
+  return err('Method not allowed', 405);
+}
+
 async function handleExpenses(kv, method, req) {
   var data = await getColl(kv, 'expenses');
 
   if (method === 'GET') return json(data);
-
   if (method === 'PUT') {
     var body = await req.json();
     Object.keys(body).forEach(function(k) { data[k] = body[k]; });
